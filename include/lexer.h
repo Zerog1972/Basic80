@@ -19,6 +19,8 @@ typedef enum {
     TOK_NEXT,
     TOK_END,
     TOK_REM,
+    TOK_SAVE,
+    TOK_LOAD,
     TOK_SIN,
     TOK_COS,
     TOK_TAN,

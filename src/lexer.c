@@ -22,6 +22,8 @@ static int isKeyword(const char *word, BasicTokenType *type) {
     if (strcmp(word, "NEXT") == 0) { *type = TOK_NEXT; return 1; }
     if (strcmp(word, "END") == 0) { *type = TOK_END; return 1; }
     if (strcmp(word, "REM") == 0) { *type = TOK_REM; return 1; }
+    if (strcmp(word, "SAVE") == 0) { *type = TOK_SAVE; return 1; }
+    if (strcmp(word, "LOAD") == 0) { *type = TOK_LOAD; return 1; }
     if (strcmp(word, "SIN") == 0) { *type = TOK_SIN; return 1; }
     if (strcmp(word, "COS") == 0) { *type = TOK_COS; return 1; }
     if (strcmp(word, "TAN") == 0) { *type = TOK_TAN; return 1; }
@@ -63,6 +65,11 @@ Token* tokenize(const char *line) {
     int j;
     
     tokens = malloc(sizeof(Token) * 256);
+    if (tokens == NULL) {
+        fprintf(stderr, "Erreur: Allocation mémoire échouée pour les tokens\n");
+        return NULL;
+    }
+    
     tokenCount = 0;
     i = 0;
     len = strlen(line);
@@ -72,6 +79,13 @@ Token* tokenize(const char *line) {
         while (i < len && isspace(line[i])) i++;
         if (i >= len) break;
         
+        /* Vérifier la limite de tokens */
+        if (tokenCount >= 255) {
+            fprintf(stderr, "Erreur: Trop de tokens (limite: 255)\n");
+            freeTokens(tokens);
+            return NULL;
+        }
+        
         tok = &tokens[tokenCount++];
         tok->lineNum = 0;
         
@@ -80,8 +94,20 @@ Token* tokenize(const char *line) {
             i++;
             start = i;
             while (i < len && line[i] != '"') i++;
+            
+            if (i >= len) {
+                fprintf(stderr, "Erreur: Chaîne non fermée\n");
+                tokenCount--; /* Annuler ce token */
+                break;
+            }
+            
             tok->type = TOK_STRING;
             tok->value = malloc(i - start + 1);
+            if (tok->value == NULL) {
+                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                freeTokens(tokens);
+                return NULL;
+            }
             strncpy(tok->value, &line[start], i - start);
             tok->value[i - start] = '\0';
             i++;
@@ -92,6 +118,11 @@ Token* tokenize(const char *line) {
             while (i < len && (isdigit(line[i]) || line[i] == '.')) i++;
             tok->type = TOK_NUMBER;
             tok->value = malloc(i - start + 1);
+            if (tok->value == NULL) {
+                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                freeTokens(tokens);
+                return NULL;
+            }
             strncpy(tok->value, &line[start], i - start);
             tok->value[i - start] = '\0';
         }
@@ -106,6 +137,12 @@ Token* tokenize(const char *line) {
             }
             
             wordLen = i - start;
+            if (wordLen >= 256) {
+                fprintf(stderr, "Erreur: Identifiant trop long (limite: 255)\n");
+                tokenCount--;
+                break;
+            }
+            
             strncpy(word, &line[start], wordLen);
             word[wordLen] = '\0';
             
@@ -116,13 +153,24 @@ Token* tokenize(const char *line) {
                 tok->type = TOK_IDENTIFIER;
             }
             tok->value = malloc(strlen(word) + 1);
+            if (tok->value == NULL) {
+                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                freeTokens(tokens);
+                return NULL;
+            }
             strcpy(tok->value, word);
         }
         /* Opérateurs */
         else {
-            tok->value = malloc(2);
+            tok->value = malloc(3);
+            if (tok->value == NULL) {
+                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                freeTokens(tokens);
+                return NULL;
+            }
             tok->value[0] = line[i];
             tok->value[1] = '\0';
+            tok->value[2] = '\0';
             
             switch (line[i]) {
                 case '=': tok->type = TOK_EQUALS; break;
@@ -135,11 +183,11 @@ Token* tokenize(const char *line) {
                 case '<': 
                     if (i + 1 < len && line[i + 1] == '=') {
                         tok->type = TOK_LE;
-                        tok->value[0] = '<'; tok->value[1] = '=';
+                        tok->value[1] = '=';
                         i++;
                     } else if (i + 1 < len && line[i + 1] == '>') {
                         tok->type = TOK_NE;
-                        tok->value[0] = '<'; tok->value[1] = '>';
+                        tok->value[1] = '>';
                         i++;
                     } else {
                         tok->type = TOK_LT;
@@ -148,7 +196,7 @@ Token* tokenize(const char *line) {
                 case '>':
                     if (i + 1 < len && line[i + 1] == '=') {
                         tok->type = TOK_GE;
-                        tok->value[0] = '>'; tok->value[1] = '=';
+                        tok->value[1] = '=';
                         i++;
                     } else {
                         tok->type = TOK_GT;
@@ -172,8 +220,12 @@ Token* tokenize(const char *line) {
 /* Libère la mémoire des tokens */
 void freeTokens(Token *tokens) {
     int i;
+    if (tokens == NULL) return;
+    
     for (i = 0; tokens[i].type != TOK_EOF; i++) {
-        if (tokens[i].value) free(tokens[i].value);
+        if (tokens[i].value) {
+            free(tokens[i].value);
+        }
     }
     free(tokens);
 }

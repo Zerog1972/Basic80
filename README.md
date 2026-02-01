@@ -157,7 +157,9 @@ Le code est strictement conforme au standard **C89/ANSI C**.
 **Commandes du shell:**
 - `LIST` - Affiche le programme en mémoire
 - `RUN` - Exécute le programme
-- `CLEAR` - Efface le programme
+- `NEW` - Efface le programme
+- `SAVE "fichier.bas"` - Sauvegarde le programme dans un fichier
+- `LOAD "fichier.bas"` - Charge un programme depuis un fichier
 - `EXIT` - Quitte l'interpréteur
 
 **Lignes numérotées:**
@@ -476,6 +478,32 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 90 END
 ```
 
+### Exemple 28: Sauvegarder et charger un programme
+```
+> 10 PRINT "Programme exemple"
+> 20 FOR I = 1 TO 3
+> 30 PRINT "Compteur:", I
+> 40 NEXT I
+> 50 END
+> LIST
+10 PRINT "Programme exemple"
+20 FOR I = 1 TO 3
+30 PRINT "Compteur:", I
+40 NEXT I
+50 END
+> SAVE "monprog.bas"
+Programme sauvegardé dans 'monprog.bas'.
+> NEW
+Programme effacé.
+> LOAD "monprog.bas"
+Programme chargé depuis 'monprog.bas'.
+> RUN
+Programme exemple
+Compteur: 1
+Compteur: 2
+Compteur: 3
+```
+
 ## Architecture
 
 Le projet est organisé comme suit :
@@ -508,5 +536,4 @@ Le projet est organisé comme suit :
 
 ## Extensions possibles
 
-- Sauvegarder/charger des programmes depuis des fichiers
 - Améliorer les diagnostics d'erreurs (ligne, colonne, message)

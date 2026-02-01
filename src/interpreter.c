@@ -187,3 +187,94 @@ void runProgram(Interpreter *interp) {
         line = line->next;
     }
 }
+
+/* Afficher le programme */
+void listProgram(Interpreter *interp) {
+    Line *line = interp->program;
+    while (line) {
+        printf("%d %s\n", line->lineNum, line->code);
+        line = line->next;
+    }
+}
+
+/* Effacer le programme */
+void clearProgram(Interpreter *interp) {
+    Line *line = interp->program;
+    Line *next;
+    
+    while (line) {
+        next = line->next;
+        free(line->code);
+        free(line);
+        line = next;
+    }
+    
+    interp->program = NULL;
+}
+
+/* Sauvegarder le programme dans un fichier */
+int saveProgram(Interpreter *interp, const char *filename) {
+    FILE *file;
+    Line *line;
+    
+    file = fopen(filename, "w");
+    if (!file) {
+        printf("Erreur: Impossible d'ouvrir le fichier '%s' en écriture.\n", filename);
+        return 0;
+    }
+    
+    line = interp->program;
+    while (line) {
+        fprintf(file, "%d %s\n", line->lineNum, line->code);
+        line = line->next;
+    }
+    
+    fclose(file);
+    return 1;
+}
+
+/* Charger un programme depuis un fichier */
+int loadProgram(Interpreter *interp, const char *filename) {
+    FILE *file;
+    char line[1024];
+    int lineNum;
+    char *code;
+    char *p;
+    
+    file = fopen(filename, "r");
+    if (!file) {
+        printf("Erreur: Impossible d'ouvrir le fichier '%s' en lecture.\n", filename);
+        return 0;
+    }
+    
+    /* Effacer le programme actuel */
+    clearProgram(interp);
+    
+    while (fgets(line, sizeof(line), file)) {
+        /* Retirer le newline */
+        line[strcspn(line, "\n")] = 0;
+        
+        /* Ignorer les lignes vides */
+        if (strlen(line) == 0) continue;
+        
+        /* Parser le numéro de ligne */
+        lineNum = atoi(line);
+        if (lineNum <= 0) {
+            printf("Attention: Ligne invalide ignorée: %s\n", line);
+            continue;
+        }
+        
+        /* Trouver le début du code après le numéro */
+        p = line;
+        while (*p && isdigit(*p)) p++;
+        while (*p && isspace(*p)) p++;
+        
+        code = p;
+        if (strlen(code) > 0) {
+            addLine(interp, lineNum, code);
+        }
+    }
+    
+    fclose(file);
+    return 1;
+}

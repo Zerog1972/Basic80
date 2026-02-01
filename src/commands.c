@@ -78,7 +78,7 @@ void handleLet(Interpreter *interp, Token *tokens) {
                 free(strResult);
             } else {
                 if (isStringExpression(interp, tokens, pos)) {
-                    printf("Erreur de type: Impossible d'assigner une chaine a une variable numerique '%s'\n", varName);
+                    printf("Erreur de type: Impossible d'assigner une chaîne à une variable numérique '%s'\n", varName);
                     return;
                 }
                 val = evaluateExpression(interp, tokens, &pos);

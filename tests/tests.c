@@ -97,10 +97,10 @@ void test_lexer_identifiants(void) {
     tokens = tokenize("var_123");
     ASSERT(tokens[0].type == TOK_IDENTIFIER, "Identifiant avec underscore et chiffres");
     freeTokens(tokens);
-
-    tokens = tokenize("NAME$");
-    ASSERT(tokens[0].type == TOK_IDENTIFIER, "Identifiant chaine avec $");
-    ASSERT_STRING_EQUAL(tokens[0].value, "NAME$", "Valeur identifiant chaine");
+    
+    tokens = tokenize("NOM$");
+    ASSERT(tokens[0].type == TOK_IDENTIFIER, "Identifiant avec suffixe $");
+    ASSERT_STRING_EQUAL(tokens[0].value, "NOM$", "Valeur identifiant string");
     freeTokens(tokens);
 }
 
@@ -199,6 +199,49 @@ void test_lexer_chaines(void) {
     ASSERT(tokens[0].type == TOK_STRING, "Chaine vide");
     ASSERT_STRING_EQUAL(tokens[0].value, "", "Chaine vide correcte");
     freeTokens(tokens);
+}
+
+void test_lexer_erreurs(void) {
+    Token *tokens;
+    
+    printf("\n=== Tests du lexer - Gestion d'erreurs ===\n");
+    
+    /* Test chaine non fermee */
+    tokens = tokenize("\"Hello");
+    ASSERT(tokens == NULL || tokens[0].type == TOK_EOF, "Chaine non fermee gere");
+    if (tokens) freeTokens(tokens);
+    
+    /* Test allocation normale */
+    tokens = tokenize("PRINT \"OK\"");
+    ASSERT(tokens != NULL, "Allocation reussie pour ligne normale");
+    if (tokens) {
+        ASSERT(tokens[0].type == TOK_PRINT, "Token PRINT correct");
+        freeTokens(tokens);
+    }
+    
+    /* Test freeTokens avec NULL */
+    freeTokens(NULL);
+    ASSERT(1, "freeTokens(NULL) ne plante pas");
+}
+
+void test_lexer_nouveaux_mots_cles(void) {
+    Token *tokens;
+    
+    printf("\n=== Tests du lexer - Nouveaux mots-cles SAVE/LOAD ===\n");
+    
+    tokens = tokenize("SAVE");
+    ASSERT(tokens != NULL, "SAVE tokenize");
+    if (tokens) {
+        ASSERT(tokens[0].type == TOK_SAVE, "Mot-cle SAVE");
+        freeTokens(tokens);
+    }
+    
+    tokens = tokenize("LOAD");
+    ASSERT(tokens != NULL, "LOAD tokenize");
+    if (tokens) {
+        ASSERT(tokens[0].type == TOK_LOAD, "Mot-cle LOAD");
+        freeTokens(tokens);
+    }
 }
 
 void test_lexer_expression_complete(void) {
@@ -1070,6 +1113,55 @@ void test_interpreteur_for_variables_limites(void) {
     freeInterpreter(interp);
 }
 
+void test_interpreteur_save_load(void) {
+    Interpreter *interp;
+    const char *filename = "test_save_load_temp.bas";
+    
+    printf("\n=== Tests de l'interpreteur - SAVE/LOAD ===\n");
+    
+    interp = createInterpreter();
+    
+    /* Creer un programme simple */
+    addLine(interp, 10, "PRINT \"Test\"");
+    addLine(interp, 20, "LET X = 42");
+    addLine(interp, 30, "END");
+    
+    /* Sauvegarder */
+    ASSERT(saveProgram(interp, filename) == 1, "Sauvegarde du programme");
+    
+    /* Effacer le programme */
+    clearProgram(interp);
+    ASSERT(interp->program == NULL, "Programme efface");
+    
+    /* Charger */
+    ASSERT(loadProgram(interp, filename) == 1, "Chargement du programme");
+    ASSERT(interp->program != NULL, "Programme charge");
+    ASSERT(interp->program->lineNum == 10, "Premiere ligne 10");
+    ASSERT(interp->program->next != NULL, "Deuxieme ligne existe");
+    ASSERT(interp->program->next->lineNum == 20, "Deuxieme ligne 20");
+    
+    /* Nettoyer */
+    freeInterpreter(interp);
+    remove(filename);
+}
+
+void test_interpreteur_save_fichier_invalide(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - SAVE/LOAD fichiers invalides ===\n");
+    
+    interp = createInterpreter();
+    
+    /* Test chargement fichier inexistant */
+    ASSERT(loadProgram(interp, "fichier_inexistant_xyz123.bas") == 0, "Echec chargement fichier inexistant");
+    
+    /* Test sauvegarde dans chemin invalide (optionnel selon OS) */
+    addLine(interp, 10, "PRINT \"Test\"");
+    /* Le test suivant peut varier selon l'OS */
+    
+    freeInterpreter(interp);
+}
+
 void test_interpreteur_fonctions_trigo(void) {
     Interpreter *interp;
     double pi = 3.14159265358979323846;
@@ -1544,6 +1636,8 @@ int main(void) {
     test_lexer_mots_cles();
     test_lexer_operateurs();
     test_lexer_chaines();
+    test_lexer_erreurs();
+    test_lexer_nouveaux_mots_cles();
     test_lexer_expression_complete();
     
     /* Tests de l'interpreteur */
@@ -1609,6 +1703,10 @@ int main(void) {
     test_interpreteur_for_imbriquees();
     test_interpreteur_for_avec_calculs();
     test_interpreteur_for_variables_limites();
+    
+    /* Tests SAVE/LOAD */
+    test_interpreteur_save_load();
+    test_interpreteur_save_fichier_invalide();
     
     /* Resume */
     printf("\n========================================\n");

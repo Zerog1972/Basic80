@@ -22,7 +22,9 @@ int main(void) {
     printf("  - Numérotées: ajoutent au programme (ex: 10 PRINT \"Hello\")\n");
     printf("  - LIST: affiche le programme\n");
     printf("  - RUN: exécute le programme\n");
-    printf("  - CLEAR: efface le programme\n");
+    printf("  - NEW: efface le programme\n");
+    printf("  - SAVE \"fichier.bas\": sauvegarde le programme\n");
+    printf("  - LOAD \"fichier.bas\": charge un programme\n");
     printf("  - EXIT: quitte l'interpréteur\n");
     printf("  - Directes: exécutent immédiatement (PRINT, LET, etc.)\n\n");
     
@@ -61,11 +63,63 @@ int main(void) {
             continue;
         }
         
-        /* Commande CLEAR */
-        if (strcmp(line, "CLEAR") == 0) {
+        /* Commande NEW */
+        if (strcmp(line, "NEW") == 0) {
             freeInterpreter(interp);
             interp = createInterpreter();
             printf("Programme effacé.\n");
+            continue;
+        }
+        
+        /* Commande SAVE */
+        if (strncmp(line, "SAVE ", 5) == 0 || strncmp(line, "SAVE\"", 5) == 0) {
+            char *filename;
+            char *start;
+            char *end;
+            
+            /* Trouver le nom du fichier entre guillemets */
+            start = strchr(line, '"');
+            if (start) {
+                start++;
+                end = strchr(start, '"');
+                if (end) {
+                    *end = '\0';
+                    filename = start;
+                    if (saveProgram(interp, filename)) {
+                        printf("Programme sauvegardé dans '%s'.\n", filename);
+                    }
+                } else {
+                    printf("Erreur: Guillemet fermant manquant.\n");
+                }
+            } else {
+                printf("Erreur: Nom de fichier entre guillemets requis (ex: SAVE \"prog.bas\").\n");
+            }
+            continue;
+        }
+        
+        /* Commande LOAD */
+        if (strncmp(line, "LOAD ", 5) == 0 || strncmp(line, "LOAD\"", 5) == 0) {
+            char *filename;
+            char *start;
+            char *end;
+            
+            /* Trouver le nom du fichier entre guillemets */
+            start = strchr(line, '"');
+            if (start) {
+                start++;
+                end = strchr(start, '"');
+                if (end) {
+                    *end = '\0';
+                    filename = start;
+                    if (loadProgram(interp, filename)) {
+                        printf("Programme chargé depuis '%s'.\n", filename);
+                    }
+                } else {
+                    printf("Erreur: Guillemet fermant manquant.\n");
+                }
+            } else {
+                printf("Erreur: Nom de fichier entre guillemets requis (ex: LOAD \"prog.bas\").\n");
+            }
             continue;
         }
         

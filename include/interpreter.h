@@ -49,7 +49,7 @@ void runProgram(Interpreter *interp);
 void executeCommand(Interpreter *interp, const char *line);
 void listProgram(Interpreter *interp);
 void clearProgram(Interpreter *interp);
-void listProgram(Interpreter *interp);
-void clearProgram(Interpreter *interp);
+int saveProgram(Interpreter *interp, const char *filename);
+int loadProgram(Interpreter *interp, const char *filename);
 
 #endif /* UTILS_H */

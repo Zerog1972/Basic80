@@ -332,7 +332,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         strcpy(varName, tokens[*pos].value);
         
         if (!isStringVariable(varName)) {
-             printf("Erreur de type: Variable numerique '%s' utilisee comme chaine\n", varName);
+             printf("Erreur de type: Variable numérique '%s' utilisée comme chaîne\n", varName);
              (*pos)++;
              result = (char*)malloc(1);
              if (result) result[0] = '\0';
