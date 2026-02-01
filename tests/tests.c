@@ -97,6 +97,11 @@ void test_lexer_identifiants(void) {
     tokens = tokenize("var_123");
     ASSERT(tokens[0].type == TOK_IDENTIFIER, "Identifiant avec underscore et chiffres");
     freeTokens(tokens);
+
+    tokens = tokenize("NAME$");
+    ASSERT(tokens[0].type == TOK_IDENTIFIER, "Identifiant chaine avec $");
+    ASSERT_STRING_EQUAL(tokens[0].value, "NAME$", "Valeur identifiant chaine");
+    freeTokens(tokens);
 }
 
 void test_lexer_mots_cles(void) {
@@ -1340,14 +1345,14 @@ void test_interpreteur_chaines_simple(void) {
     interp = createInterpreter();
     
     /* Affectation de chaînes */
-    addLine(interp, 10, "LET NOM = \"Alice\"");
-    addLine(interp, 20, "LET PRENOM = \"Bob\"");
+    addLine(interp, 10, "LET NOM$ = \"Alice\"");
+    addLine(interp, 20, "LET PRENOM$ = \"Bob\"");
     addLine(interp, 30, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "NOM"), "Alice", "NOM = Alice");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "PRENOM"), "Bob", "PRENOM = Bob");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "NOM$"), "Alice", "NOM$ = Alice");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "PRENOM$"), "Bob", "PRENOM$ = Bob");
     
     freeInterpreter(interp);
 }
@@ -1360,14 +1365,14 @@ void test_interpreteur_chaines_copie(void) {
     interp = createInterpreter();
     
     /* Copie de variables chaînes */
-    addLine(interp, 10, "LET A = \"Hello\"");
-    addLine(interp, 20, "LET B = A");
+    addLine(interp, 10, "LET A$ = \"Hello\"");
+    addLine(interp, 20, "LET B$ = A$");
     addLine(interp, 30, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "A"), "Hello", "A = Hello");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "B"), "Hello", "B copie de A");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "A$"), "Hello", "A$ = Hello");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "B$"), "Hello", "B$ copie de A$");
     
     freeInterpreter(interp);
 }
@@ -1380,9 +1385,9 @@ void test_interpreteur_chaines_len(void) {
     interp = createInterpreter();
     
     /* Fonction LEN */
-    addLine(interp, 10, "LET TEXT = \"Bonjour\"");
+    addLine(interp, 10, "LET TEXT$ = \"Bonjour\"");
     addLine(interp, 20, "LET L1 = LEN(\"Hello\")");
-    addLine(interp, 30, "LET L2 = LEN(TEXT)");
+    addLine(interp, 30, "LET L2 = LEN(TEXT$)");
     addLine(interp, 40, "END");
     
     runProgram(interp);
@@ -1403,8 +1408,8 @@ void test_interpreteur_chaines_asc(void) {
     /* Fonction ASC - code ASCII */
     addLine(interp, 10, "LET A = ASC(\"A\")");
     addLine(interp, 20, "LET Z = ASC(\"Z\")");
-    addLine(interp, 30, "LET TEXT = \"Hello\"");
-    addLine(interp, 40, "LET H = ASC(TEXT)");
+    addLine(interp, 30, "LET TEXT$ = \"Hello\"");
+    addLine(interp, 40, "LET H = ASC(TEXT$)");
     addLine(interp, 50, "END");
     
     runProgram(interp);
@@ -1424,16 +1429,16 @@ void test_interpreteur_chaines_chr(void) {
     interp = createInterpreter();
     
     /* Fonction CHR - convertit code ASCII en caractère */
-    addLine(interp, 10, "LET A = CHR(65)");
-    addLine(interp, 20, "LET Z = CHR(90)");
-    addLine(interp, 30, "LET SPACE = CHR(32)");
+    addLine(interp, 10, "LET A$ = CHR(65)");
+    addLine(interp, 20, "LET Z$ = CHR(90)");
+    addLine(interp, 30, "LET SPACE$ = CHR(32)");
     addLine(interp, 40, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "A"), "A", "CHR(65) = A");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "Z"), "Z", "CHR(90) = Z");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "SPACE"), " ", "CHR(32) = espace");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "A$"), "A", "CHR(65) = A");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "Z$"), "Z", "CHR(90) = Z");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "SPACE$"), " ", "CHR(32) = espace");
     
     freeInterpreter(interp);
 }
@@ -1446,17 +1451,17 @@ void test_interpreteur_chaines_mid(void) {
     interp = createInterpreter();
     
     /* Fonction MID - extraction de sous-chaîne */
-    addLine(interp, 10, "LET TEXT = \"HelloWorld\"");
-    addLine(interp, 20, "LET SUB1 = MID(TEXT, 1, 5)");
-    addLine(interp, 30, "LET SUB2 = MID(TEXT, 6, 5)");
-    addLine(interp, 40, "LET SUB3 = MID(\"BASIC\", 3, 2)");
+    addLine(interp, 10, "LET TEXT$ = \"HelloWorld\"");
+    addLine(interp, 20, "LET SUB1$ = MID(TEXT$, 1, 5)");
+    addLine(interp, 30, "LET SUB2$ = MID(TEXT$, 6, 5)");
+    addLine(interp, 40, "LET SUB3$ = MID(\"BASIC\", 3, 2)");
     addLine(interp, 50, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "SUB1"), "Hello", "MID(\"HelloWorld\", 1, 5) = Hello");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "SUB2"), "World", "MID(\"HelloWorld\", 6, 5) = World");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "SUB3"), "SI", "MID(\"BASIC\", 3, 2) = SI");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "SUB1$"), "Hello", "MID(\"HelloWorld\", 1, 5) = Hello");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "SUB2$"), "World", "MID(\"HelloWorld\", 6, 5) = World");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "SUB3$"), "SI", "MID(\"BASIC\", 3, 2) = SI");
     
     freeInterpreter(interp);
 }
@@ -1469,15 +1474,15 @@ void test_interpreteur_chaines_left(void) {
     interp = createInterpreter();
     
     /* Fonction LEFT - premiers caractères */
-    addLine(interp, 10, "LET TEXT = \"Programming\"");
-    addLine(interp, 20, "LET L1 = LEFT(TEXT, 4)");
-    addLine(interp, 30, "LET L2 = LEFT(\"BASIC\", 3)");
+    addLine(interp, 10, "LET TEXT$ = \"Programming\"");
+    addLine(interp, 20, "LET L1$ = LEFT(TEXT$, 4)");
+    addLine(interp, 30, "LET L2$ = LEFT(\"BASIC\", 3)");
     addLine(interp, 40, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "L1"), "Prog", "LEFT(\"Programming\", 4) = Prog");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "L2"), "BAS", "LEFT(\"BASIC\", 3) = BAS");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "L1$"), "Prog", "LEFT(\"Programming\", 4) = Prog");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "L2$"), "BAS", "LEFT(\"BASIC\", 3) = BAS");
     
     freeInterpreter(interp);
 }
@@ -1490,15 +1495,15 @@ void test_interpreteur_chaines_right(void) {
     interp = createInterpreter();
     
     /* Fonction RIGHT - derniers caractères */
-    addLine(interp, 10, "LET TEXT = \"Programming\"");
-    addLine(interp, 20, "LET R1 = RIGHT(TEXT, 4)");
-    addLine(interp, 30, "LET R2 = RIGHT(\"BASIC\", 2)");
+    addLine(interp, 10, "LET TEXT$ = \"Programming\"");
+    addLine(interp, 20, "LET R1$ = RIGHT(TEXT$, 4)");
+    addLine(interp, 30, "LET R2$ = RIGHT(\"BASIC\", 2)");
     addLine(interp, 40, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "R1"), "ming", "RIGHT(\"Programming\", 4) = ming");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "R2"), "IC", "RIGHT(\"BASIC\", 2) = IC");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "R1$"), "ming", "RIGHT(\"Programming\", 4) = ming");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "R2$"), "IC", "RIGHT(\"BASIC\", 2) = IC");
     
     freeInterpreter(interp);
 }
@@ -1510,18 +1515,18 @@ void test_interpreteur_chaines_concat(void) {
     
     interp = createInterpreter();
     
-    addLine(interp, 10, "LET A = \"Hello\" + \" \" + \"World\"");
-    addLine(interp, 20, "LET B = LEFT(\"PROG\", 2) + RIGHT(\"RAM\", 2)");
-    addLine(interp, 30, "LET C = MID(\"BASIC\", 1, 2) + \"-\" + MID(\"BASIC\", 4, 2)");
-    addLine(interp, 40, "LET D = A + \"!\"");
+    addLine(interp, 10, "LET A$ = \"Hello\" + \" \" + \"World\"");
+    addLine(interp, 20, "LET B$ = LEFT(\"PROG\", 2) + RIGHT(\"RAM\", 2)");
+    addLine(interp, 30, "LET C$ = MID(\"BASIC\", 1, 2) + \"-\" + MID(\"BASIC\", 4, 2)");
+    addLine(interp, 40, "LET D$ = A$ + \"!\"");
     addLine(interp, 50, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "A"), "Hello World", "Concat lit+lit");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "B"), "PRAM", "Concat LEFT + RIGHT");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "C"), "BA-IC", "Concat MID + lit");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "D"), "Hello World!", "Concat variable + lit");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "A$"), "Hello World", "Concat lit+lit");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "B$"), "PRAM", "Concat LEFT + RIGHT");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "C$"), "BA-IC", "Concat MID + lit");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "D$"), "Hello World!", "Concat variable + lit");
     
     freeInterpreter(interp);
 }

@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Helper pour vérifier le suffixe $ */
+static int isStringVariable(const char *name) {
+    size_t len = strlen(name);
+    return len > 0 && name[len - 1] == '$';
+}
+
 /* ===== COMMANDE PRINT ===== */
 
 void handlePrint(Interpreter *interp, Token *tokens) {
@@ -65,20 +71,16 @@ void handleLet(Interpreter *interp, Token *tokens) {
             }
         } else if (tokens[pos].type == TOK_EQUALS) {
             pos++;
-            if (isStringExpression(interp, tokens, pos)) {
+            
+            if (isStringVariable(varName)) {
                 char *strResult = evaluateStringExpression(interp, tokens, &pos);
                 setStringVariable(interp, varName, strResult);
                 free(strResult);
-            } else if (tokens[pos].type == TOK_IDENTIFIER) {
-                Variable *srcVar = findVariable(interp, tokens[pos].value);
-                if (srcVar && srcVar->isString) {
-                    setStringVariable(interp, varName, srcVar->strValue);
-                    pos++;
-                } else {
-                    val = evaluateExpression(interp, tokens, &pos);
-                    setVariable(interp, varName, val);
-                }
             } else {
+                if (isStringExpression(interp, tokens, pos)) {
+                    printf("Erreur de type: Impossible d'assigner une chaine a une variable numerique '%s'\n", varName);
+                    return;
+                }
                 val = evaluateExpression(interp, tokens, &pos);
                 setVariable(interp, varName, val);
             }
@@ -121,14 +123,27 @@ void handleDim(Interpreter *interp, Token *tokens) {
 
 void handleInput(Interpreter *interp, Token *tokens) {
     int pos;
-    double val;
     char varName[256];
+    char buffer[1024];
     
     pos = 1;
     if (tokens[pos].type == TOK_IDENTIFIER) {
         strcpy(varName, tokens[pos].value);
-        if (scanf("%lf", &val) == 1) {
-            setVariable(interp, varName, val);
+        
+        printf("? ");
+        if (isStringVariable(varName)) {
+            if (fgets(buffer, sizeof(buffer), stdin)) {
+                buffer[strcspn(buffer, "\n")] = 0;
+                setStringVariable(interp, varName, buffer);
+            }
+        } else {
+            double val;
+            if (scanf("%lf", &val) == 1) {
+                /* Consommer le reste de la ligne */
+                int c;
+                while ((c = getchar()) != '\n' && c != EOF);
+                setVariable(interp, varName, val);
+            }
         }
     }
 }

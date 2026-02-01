@@ -99,6 +99,12 @@ Token* tokenize(const char *line) {
         else if (isalpha(line[i])) {
             start = i;
             while (i < len && (isalnum(line[i]) || line[i] == '_')) i++;
+            
+            /* Support du suffixe $ pour les variables chaine */
+            if (i < len && line[i] == '$') {
+                i++;
+            }
+            
             wordLen = i - start;
             strncpy(word, &line[start], wordLen);
             word[wordLen] = '\0';

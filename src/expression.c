@@ -5,6 +5,11 @@
 #include <string.h>
 #include <math.h>
 
+static int isStringVariable(const char *name) {
+    size_t len = strlen(name);
+    return len > 0 && name[len - 1] == '$';
+}
+
 /* Évaluer une condition (pour IF...THEN) */
 int evaluateCondition(Interpreter *interp, Token *tokens, int *pos) {
     double left, right;
@@ -49,6 +54,13 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
         (*pos)++;
     } else if (tokens[*pos].type == TOK_IDENTIFIER) {
         strcpy(varName, tokens[*pos].value);
+        
+        if (isStringVariable(varName)) {
+             printf("Erreur de type: Variable chaine '%s' utilisee dans une expression numerique\n", varName);
+             (*pos)++; /* Skip variable to avoid infinite loop if caller retries? Or just return 0 */
+             return 0.0;
+        }
+
         (*pos)++;
         
         /* Vérifier si c'est un accès à un tableau */
@@ -318,6 +330,15 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         (*pos)++;
     } else if (tokens[*pos].type == TOK_IDENTIFIER) {
         strcpy(varName, tokens[*pos].value);
+        
+        if (!isStringVariable(varName)) {
+             printf("Erreur de type: Variable numerique '%s' utilisee comme chaine\n", varName);
+             (*pos)++;
+             result = (char*)malloc(1);
+             if (result) result[0] = '\0';
+             return result;
+        }
+
         (*pos)++;
         str = getStringVariable(interp, varName);
         result = (char*)malloc(strlen(str) + 1);
