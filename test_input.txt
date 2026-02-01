@@ -1,0 +1,4 @@
+PRINT "Test direct"
+LET X = 42
+PRINT "X =", X
+EXIT

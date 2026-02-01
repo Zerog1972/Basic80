@@ -1,0 +1,17 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "C/C++: clang.exe build and debug project",
+			"type": "cppvsdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}\\${workspaceFolderBasename}.exe",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": false,
+			"preLaunchTask": "C/C++: clang.exe build all files"
+		}
+	]
+}
