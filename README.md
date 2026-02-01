@@ -4,11 +4,23 @@ Un interpréteur simple pour le langage BASIC classique.
 
 ## Fonctionnalités
 
+### Variables et Types de Données
+Le langage impose un typage strict basé sur le nom des variables :
+- **Variables Numériques** (Double précision) :
+  - Le nom ne doit **pas** se terminer par `$`.
+  - Exemples : `X`, `COMPTE`, `PI`, `A1`.
+  - Valeur par défaut : `0.0`.
+- **Variables Chaînes** (String) :
+  - Le nom **doit** se terminer par `$`.
+  - Exemples : `NOM$`, `TEXT$`, `A$`.
+  - Valeur par défaut : `""` (chaîne vide).
+  - La longueur maximale d'une chaîne est techniquement limitée par la mémoire, mais les opérations sont gérées dynamiquement.
+
 ### Commandes BASIC supportées:
 - **PRINT** - Affiche du texte et des variables
 - **LET** - Assigne une valeur à une variable
 - **DIM** - Déclare un tableau
-- **INPUT** - Lit une valeur depuis l'utilisateur
+- **INPUT** - Lit une valeur numérique ou une chaîne (pour variable `VAR$`) depuis l'utilisateur
 - **GOTO** - Saute à une ligne numérotée
 - **GOSUB** - Appelle une sous-routine
 - **RETURN** - Retourne de la sous-routine
@@ -47,13 +59,21 @@ Un interpréteur simple pour le langage BASIC classique.
 - **LOG10(x)** - Logarithme base 10
 
 ### Fonctions de chaînes:
-- **LEN(s)** - Longueur d'une chaîne
-- **ASC(s)** - Code ASCII du premier caractère
-- **MID(s, start, len)** - Sous-chaîne depuis `start` (1-indexé) sur `len` caractères
-- **LEFT(s, n)** - `n` premiers caractères
-- **RIGHT(s, n)** - `n` derniers caractères
-- **CHR(n)** - Caractère correspondant au code ASCII `n`
-- Concaténation avec `+` entre expressions de chaînes
+Ces fonctions manipulent des chaînes de caractères.
+- **LEN(s)** : Retourne la longueur de la chaîne `s`. (Retourne un nombre)
+- **ASC(s)** : Retourne le code ASCII du premier caractère de `s`. (Retourne un nombre)
+- **CHR(n)** : Retourne le caractère correspondant au code ASCII `n`. (Retourne une chaîne)
+- **MID(s, start, len)** : Retourne une sous-chaîne de `s` commençant à `start` (1-indexé) de longueur `len`. (Retourne une chaîne)
+- **LEFT(s, n)** : Retourne les `n` premiers caractères de `s`. (Retourne une chaîne)
+- **RIGHT(s, n)** : Retourne les `n` derniers caractères de `s`. (Retourne une chaîne)
+
+Exemple :
+```basic
+LET A$ = "BONJOUR"
+PRINT LEN(A$)      ' Affiche 7
+PRINT LEFT(A$, 3)  ' Affiche BON
+```
+L'opérateur `+` permet la concaténation de deux chaînes.
 
 ### Opérateurs de comparaison (déclarés):
 - `<` Inférieur à
