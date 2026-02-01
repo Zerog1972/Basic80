@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "interpreter.h"
 #include <math.h>
 
 /* Variables globales pour les tests */
@@ -1093,6 +1093,62 @@ void test_interpreteur_fonctions_trigo(void) {
     freeInterpreter(interp);
 }
 
+void test_interpreteur_fonctions_hyperboliques(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonctions hyperboliques et trigonometriques inverses ===\n");
+    
+    interp = createInterpreter();
+    
+    /* Test ATAN, ASIN, ACOS, SINH, COSH, TANH */
+    addLine(interp, 10, "LET A = ATAN(0)");
+    addLine(interp, 20, "LET B = ATAN(1)"); /* pi/4 */
+    addLine(interp, 30, "LET C = SINH(0)");
+    addLine(interp, 40, "LET D = COSH(0)");
+    addLine(interp, 50, "LET E = TANH(0)");
+    addLine(interp, 60, "LET F = ASIN(0)");
+    addLine(interp, 70, "LET G = ACOS(1)");
+    addLine(interp, 80, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "A"), 0.0, "ATAN(0) = 0");
+    /* ATAN(1) is approx 0.785398163 */
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "B"), 0.785398163, "ATAN(1) = PI/4");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), 0.0, "SINH(0) = 0");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "D"), 1.0, "COSH(0) = 1");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "E"), 0.0, "TANH(0) = 0");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "F"), 0.0, "ASIN(0) = 0");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "G"), 0.0, "ACOS(1) = 0");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_fonctions_angle_conv(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonctions de conversion d'angles ===\n");
+    
+    interp = createInterpreter();
+    
+    /* Test RAD et DEG */
+    addLine(interp, 10, "LET D = 180");
+    addLine(interp, 20, "LET R = RAD(D)"); /* Should be PI (approx 3.14159) */
+    addLine(interp, 30, "LET D2 = DEG(R)"); /* Should be 180 */
+    addLine(interp, 40, "LET S = SIN(RAD(90))"); /* SIN(PI/2) = 1 */
+    addLine(interp, 50, "END");
+    
+    runProgram(interp);
+    
+    /* Precision tolerance in ASSERT_DOUBLE_EQUAL is usually small, so we might need approximate check */
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "R"), 3.141592653589793, "RAD(180) = PI");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "D2"), 180.0, "DEG(PI) = 180");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S"), 1.0, "SIN(RAD(90)) = 1");
+    
+    freeInterpreter(interp);
+}
+
+
 void test_interpreteur_fonctions_math(void) {
     Interpreter *interp;
     
@@ -1141,6 +1197,36 @@ void test_interpreteur_fonctions_composees(void) {
     ASSERT_DOUBLE_EQUAL(getVariable(interp, "B"), 3.0, "ABS(SQR(4) - 5) = ABS(-3) = 3");
     ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), 3.0, "INT(SQR(10)) = INT(3.162..) = 3");
     ASSERT_DOUBLE_EQUAL(getVariable(interp, "D"), 7.0, "2 * SQR(9) + 1 = 2 * 3 + 1 = 7");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_fonctions_avancees(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonctions avancees (LOG, EXP, POW) ===\n");
+    
+    interp = createInterpreter();
+    
+    /* Test LOG, EXP, POW, LOG10 */
+    addLine(interp, 10, "LET A = EXP(1)");
+    addLine(interp, 20, "LET B = LOG(2.718)");
+    addLine(interp, 30, "LET C = LOG10(100)");
+    addLine(interp, 40, "LET D = LOG10(1000)");
+    addLine(interp, 50, "LET E = POW(2, 3)");
+    addLine(interp, 60, "LET F = POW(10, 2)");
+    addLine(interp, 70, "LET G = POW(5, 0)");
+    addLine(interp, 80, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "A"), 2.718, "EXP(1) ≈ e ≈ 2.718");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "B"), 1.0, "LOG(e) ≈ 1");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), 2.0, "LOG10(100) = 2");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "D"), 3.0, "LOG10(1000) = 3");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "E"), 8.0, "POW(2, 3) = 2^3 = 8");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "F"), 100.0, "POW(10, 2) = 10^2 = 100");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "G"), 1.0, "POW(5, 0) = 5^0 = 1");
     
     freeInterpreter(interp);
 }
@@ -1487,8 +1573,11 @@ int main(void) {
     
     /* Tests des fonctions mathématiques */
     test_interpreteur_fonctions_trigo();
+    test_interpreteur_fonctions_hyperboliques();
+    test_interpreteur_fonctions_angle_conv();
     test_interpreteur_fonctions_math();
     test_interpreteur_fonctions_composees();
+    test_interpreteur_fonctions_avancees();
     
     /* Tests de GOSUB/RETURN */
     test_interpreteur_gosub_simple();

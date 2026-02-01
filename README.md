@@ -28,11 +28,23 @@ Un interpréteur simple pour le langage BASIC classique.
 - **SIN(x)** - Sinus (x en radians)
 - **COS(x)** - Cosinus (x en radians)
 - **TAN(x)** - Tangente (x en radians)
+- **ATAN(x)** - Arc Tangente (retourne radians)
+- **ASIN(x)** - Arc Sinus (retourne radians)
+- **ACOS(x)** - Arc Cosinus (retourne radians)
+- **SINH(x)** - Sinus Hyperbolique
+- **COSH(x)** - Cosinus Hyperbolique
+- **TANH(x)** - Tangente Hyperbolique
+- **RAD(x)** - Convertit degres en radians
+- **DEG(x)** - Convertit radians en degres
 - **SQR(x)** - Racine carrée
 - **ABS(x)** - Valeur absolue
 - **INT(x)** - Partie entière (arrondi vers le bas)
 - **RND(x)** - Nombre aléatoire entre 0 et x-1
 - **RND** - Nombre aléatoire entre 0.0 et 1.0
+- **LOG(x)** - Logarithme naturel (ln)
+- **EXP(x)** - Exponentielle (e^x)
+- **POW(x, y)** - Puissance (x^y)
+- **LOG10(x)** - Logarithme base 10
 
 ### Fonctions de chaînes:
 - **LEN(s)** - Longueur d'une chaîne
@@ -54,7 +66,7 @@ Un interpréteur simple pour le langage BASIC classique.
 
 ### Compilation
 ```bash
-clang -std=c89 -pedantic -Wall -g main.c utils.c -o basic.exe
+clang -std=c89 -pedantic -Wall -g main.c interpreter.c lexer.c variables.c expression.c control_flow.c commands.c -o basic.exe
 ```
 
 Ou utilisez la tâche VS Code: **C/C++: clang.exe build all files**
@@ -62,7 +74,7 @@ Ou utilisez la tâche VS Code: **C/C++: clang.exe build all files**
 ### Tests unitaires
 Compiler et exécuter les tests :
 ```bash
-clang -std=c89 -pedantic -Wall -g tests.c utils.c -o tests.exe
+clang -std=c89 -pedantic -Wall -g tests.c interpreter.c lexer.c variables.c expression.c control_flow.c commands.c -o tests.exe
 .\tests.exe
 ```
 
@@ -111,7 +123,7 @@ Les tests unitaires incluent :
   - Boucles FOR avec calculs (factorielle, somme des carrés)
   - Boucles FOR avec variables pour limites
 
-Total : **184 tests unitaires**
+Total : **191 tests unitaires**
 
 Le code est strictement conforme au standard **C89/ANSI C**.
 
@@ -405,27 +417,70 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 50 END
 ```
 
+### Exemple 25: Fonctions mathématiques avancées
+```basic
+10 LET E = EXP(1)
+20 LET L = LOG(E)
+30 LET P = POW(2, 8)
+40 LET L10 = LOG10(1000)
+50 PRINT "e =", E
+60 PRINT "ln(e) =", L
+70 PRINT "2^8 =", P
+80 PRINT "log10(1000) =", L10
+90 END
+```
+
+### Exemple 26: Fonctions hyperboliques
+```basic
+10 LET S = SINH(0)
+20 LET C = COSH(0)
+30 LET T = TANH(0)
+40 LET A = ATAN(1)
+50 PRINT "SINH(0) =", S
+60 PRINT "COSH(0) =", C
+70 PRINT "TANH(0) =", T
+80 PRINT "ATAN(1) (approx PI/4) =", A
+90 END
+```
+
+### Exemple 27: Utilisation des degres et radians
+```basic
+10 LET ANGLE = 90
+20 REM Convertir degres en radians pour SIN
+30 LET S = SIN(RAD(ANGLE))
+40 PRINT "SIN(90 degres) =", S
+50 REM Convertir resultat inverse en degres
+60 LET A = ASIN(1)
+70 LET D = DEG(A)
+80 PRINT "ASIN(1) en degres =", D
+90 END
+```
+
 ## Architecture
 
 ### Fichiers:
 - **main.c** - Programme principal et boucle interactive
-- **utils.h** - Définitions des structures et prototypes
-- **utils.c** - Implémentation du lexer, parser et interpréteur
+- **interpreter.h/c** - Noyau de l'interpréteur et orchestration (189 lignes)
+- **commands.h/c** - Commandes BASIC (PRINT, LET, DIM, INPUT) (161 lignes)
+- **control_flow.h/c** - Gestion du flux de contrôle (IF/FOR/GOTO/GOSUB) (295 lignes)
+- **expression.h/c** - Évaluation des expressions arithmétiques et chaînes (401 lignes)
+- **variables.h/c** - Gestion des variables et tableaux multi-dimensionnels (259 lignes)
+- **lexer.h/c** - Analyse lexicale et tokenisation (219 lignes)
 
 ### Composants:
-1. **Lexer** - Tokenise le code source en tokens
-2. **Parser** - Analyse les tokens (intégré à l'interpréteur)
-3. **Interpréteur** - Exécute les instructions
-4. **Gestion des variables** - Liste chaînée de variables
-5. **Gestion du programme** - Liste chaînée de lignes numérotées
+1. **Lexer** - Tokenise le code source (41 mots-clés, 56 types de tokens)
+2. **Variables** - Gestion variables numériques, chaînes, tableaux jusqu'à 10 dimensions
+3. **Expression** - Évaluation avec priorité des opérateurs, fonctions mathématiques et chaînes
+4. **Control Flow** - Gestion IF/THEN/ELSE, FOR/NEXT, GOTO, GOSUB/RETURN
+5. **Commands** - Exécution des commandes PRINT, LET, DIM, INPUT
+6. **Interpreter** - Orchestration minimale du programme BASIC
 
 ## Limitations actuelles
 
 - Pas de gestion d'erreurs avancée
-- Les angles des fonctions trigonométriques sont en radians
+- Les angles des fonctions trigonométriques sont en radians (utilisez RAD/DEG pour la conversion)
 
 ## Extensions possibles
 
-- Ajouter d'autres fonctions (LOG, EXP, etc.)
 - Sauvegarder/charger des programmes depuis des fichiers
 - Améliorer les diagnostics d'erreurs (ligne, colonne, message)

@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "interpreter.h"
 
 int main(void) {
     Interpreter *interp;
