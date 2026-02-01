@@ -131,11 +131,15 @@ int main(void) {
             i++;
         }
         
-        if (lineNum > 0 && isspace(line[i])) {
-            /* Ligne numérotée - ajouter au programme */
+        if (lineNum > 0 && (isspace(line[i]) || line[i] == '\0')) {
+            /* Ligne numérotée */
             while (line[i] && isspace(line[i])) i++;
             if (line[i]) {
+                /* Il y a du code - ajouter/modifier la ligne */
                 addLine(interp, lineNum, &line[i]);
+            } else {
+                /* Pas de code - supprimer la ligne */
+                deleteLine(interp, lineNum);
             }
         } else {
             /* Commande immédiate */

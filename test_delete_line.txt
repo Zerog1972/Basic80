@@ -1,0 +1,8 @@
+10 PRINT "Ligne 10"
+20 PRINT "Ligne 20"
+30 PRINT "Ligne 30"
+LIST
+20
+LIST
+RUN
+EXIT

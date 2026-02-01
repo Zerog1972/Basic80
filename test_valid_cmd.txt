@@ -1,0 +1,9 @@
+NEW
+10 DIM A(5)
+20 A(0) = 10
+30 B = 20
+40 PRINT "A(0) ="; A(0)
+50 PRINT "B ="; B
+LIST
+RUN
+EXIT

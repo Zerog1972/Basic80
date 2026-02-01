@@ -1,0 +1,7 @@
+10 DIM V(10):DIM R(10)
+20 FOR I=1 TO 10
+30 V(I)=I*I:R(I)=I*I*I
+35 PRINT I + " -> " + V(I) + " -> " + R(I)
+40 NEXT I
+RUN
+EXIT

@@ -1,0 +1,4 @@
+LOAD "test_error_syntax.bas"
+LIST
+RUN
+EXIT

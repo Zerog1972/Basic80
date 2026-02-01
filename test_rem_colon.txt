@@ -1,0 +1,4 @@
+10 REM Ceci est un commentaire: avec des deux-points: plusieurs fois
+20 A = 5 : PRINT A
+RUN
+EXIT

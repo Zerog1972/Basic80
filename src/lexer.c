@@ -203,6 +203,8 @@ Token* tokenize(const char *line) {
                     }
                     break;
                 case ',': tok->type = TOK_COMMA; break;
+                case ';': tok->type = TOK_SEMICOLON; break;
+                case ':': tok->type = TOK_COLON; break;
                 default: 
                     free(tok->value);
                     tokenCount--;

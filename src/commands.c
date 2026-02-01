@@ -29,6 +29,9 @@ void handlePrint(Interpreter *interp, Token *tokens) {
         if (tokens[pos].type == TOK_COMMA) {
             printf(" ");
             pos++;
+        } else if (tokens[pos].type == TOK_SEMICOLON) {
+            /* Point-virgule : pas d'espace entre les éléments */
+            pos++;
         }
     }
     printf("\n");
@@ -41,50 +44,63 @@ void handleLet(Interpreter *interp, Token *tokens) {
     double val;
     char varName[256];
     
-    pos = 1;
-    if (tokens[pos].type == TOK_IDENTIFIER) {
-        strcpy(varName, tokens[pos].value);
-        pos++;
+    /* Détecter si on a LET ou une affectation directe */
+    pos = (tokens[0].type == TOK_LET) ? 1 : 0;
+    
+    if (tokens[pos].type != TOK_IDENTIFIER) {
+        reportError(interp, "Nom de variable attendu après LET.");
+        return;
+    }
+    
+    strcpy(varName, tokens[pos].value);
+    pos++;
+    
+    /* Vérifier si c'est une affectation de tableau */
+    if (tokens[pos].type == TOK_LPAREN) {
+        int indices[10]; /* Maximum 10 dimensions */
+        int numIndices;
         
-        /* Vérifier si c'est une affectation de tableau */
-        if (tokens[pos].type == TOK_LPAREN) {
-            int indices[10]; /* Maximum 10 dimensions */
-            int numIndices;
-            
-            pos++;
-            numIndices = 0;
-            /* Lire tous les indices séparés par des virgules */
-            while (numIndices < 10) {
-                indices[numIndices] = (int)evaluateExpression(interp, tokens, &pos);
-                numIndices++;
-                if (tokens[pos].type == TOK_COMMA) {
-                    pos++; /* Passer la virgule */
-                } else {
-                    break; /* Fin des indices */
-                }
-            }
-            if (tokens[pos].type == TOK_RPAREN) pos++;
-            if (tokens[pos].type == TOK_EQUALS) {
-                pos++;
-                val = evaluateExpression(interp, tokens, &pos);
-                setArrayElement(interp, varName, indices, numIndices, val);
-            }
-        } else if (tokens[pos].type == TOK_EQUALS) {
-            pos++;
-            
-            if (isStringVariable(varName)) {
-                char *strResult = evaluateStringExpression(interp, tokens, &pos);
-                setStringVariable(interp, varName, strResult);
-                free(strResult);
+        pos++;
+        numIndices = 0;
+        /* Lire tous les indices séparés par des virgules */
+        while (numIndices < 10) {
+            indices[numIndices] = (int)evaluateExpression(interp, tokens, &pos);
+            numIndices++;
+            if (tokens[pos].type == TOK_COMMA) {
+                pos++; /* Passer la virgule */
             } else {
-                if (isStringExpression(interp, tokens, pos)) {
-                    printf("Erreur de type: Impossible d'assigner une chaîne à une variable numérique '%s'\n", varName);
-                    return;
-                }
-                val = evaluateExpression(interp, tokens, &pos);
-                setVariable(interp, varName, val);
+                break; /* Fin des indices */
             }
         }
+        if (tokens[pos].type != TOK_RPAREN) {
+            reportError(interp, "')' attendu après les indices du tableau.");
+            return;
+        }
+        pos++;
+        if (tokens[pos].type != TOK_EQUALS) {
+            reportError(interp, "'=' attendu dans l'affectation.");
+            return;
+        }
+        pos++;
+        val = evaluateExpression(interp, tokens, &pos);
+        setArrayElement(interp, varName, indices, numIndices, val);
+    } else if (tokens[pos].type == TOK_EQUALS) {
+        pos++;
+        
+        if (isStringVariable(varName)) {
+            char *strResult = evaluateStringExpression(interp, tokens, &pos);
+            setStringVariable(interp, varName, strResult);
+            free(strResult);
+        } else {
+            if (isStringExpression(interp, tokens, pos)) {
+                reportError(interp, "Impossible d'assigner une chaîne à une variable numérique.");
+                return;
+            }
+            val = evaluateExpression(interp, tokens, &pos);
+            setVariable(interp, varName, val);
+        }
+    } else {
+        reportError(interp, "'=' ou '(' attendu après le nom de variable.");
     }
 }
 

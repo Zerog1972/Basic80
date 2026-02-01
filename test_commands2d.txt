@@ -1,0 +1,3 @@
+LOAD "test_array2d_fix.bas"
+RUN
+EXIT

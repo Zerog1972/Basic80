@@ -1,0 +1,3 @@
+LOAD "test_error_line.bas"
+RUN
+EXIT

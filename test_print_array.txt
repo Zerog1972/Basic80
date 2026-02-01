@@ -1,0 +1,8 @@
+10 DIM T(3)
+20 T(1) = 10 : T(2) = 20 : T(3) = 30
+30 PRINT "Tableau:"
+40 PRINT "T(1)=" ; T(1) ; " T(2)=" ; T(2) ; " T(3)=" ; T(3)
+50 S = T(1) + T(2) + T(3)
+60 PRINT "Somme:" ; S
+RUN
+EXIT

@@ -1,0 +1,3 @@
+A = 5 : PRINT A : B = 10 : PRINT B
+C = A + B : PRINT "Total =" ; C
+EXIT

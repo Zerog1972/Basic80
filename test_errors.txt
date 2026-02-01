@@ -1,0 +1,12 @@
+BLABLA test
+INVALID
+A B C
+LET
+LET A
+GOTO
+FOR
+NEXT
+A (
+A = 
+A(1 2) = 5
+ZZZZZ

@@ -1,0 +1,8 @@
+A = 42
+B = 3.14
+PRINT "A=" ; A
+PRINT "B=" ; B
+PRINT "Total:" ; A + B
+PRINT A ; "+" ; B ; "=" ; A + B
+PRINT A , B , A + B
+EXIT

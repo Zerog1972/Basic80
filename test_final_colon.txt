@@ -1,0 +1,7 @@
+10 REM Programme de test: plusieurs instructions par ligne
+20 A = 1 : B = 2 : C = 3 : PRINT "A=" ; A ; " B=" ; B ; " C=" ; C
+30 S = A + B + C : PRINT "Somme =" ; S
+40 IF S > 5 THEN PRINT "Grande somme" : A = 100
+50 PRINT "A final =" ; A
+RUN
+EXIT

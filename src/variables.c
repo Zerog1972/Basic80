@@ -158,6 +158,7 @@ void setArrayElement(Interpreter *interp, const char *name, int *indices, int nu
     Variable *var;
     int flatIndex;
     int i;
+    int j;
     int multiplier;
     
     var = findVariable(interp, name);
@@ -167,13 +168,16 @@ void setArrayElement(Interpreter *interp, const char *name, int *indices, int nu
     
     /* Convertir les indices multi-dimensionnels en index plat (row-major order) */
     flatIndex = 0;
-    multiplier = 1;
-    for (i = numIndices - 1; i >= 0; i--) {
+    for (i = 0; i < numIndices; i++) {
         if (indices[i] < 0 || indices[i] >= var->dimensions[i]) {
             return; /* Index hors limites */
         }
+        /* Calculer le multiplicateur pour cette dimension */
+        multiplier = 1;
+        for (j = i + 1; j < numIndices; j++) {
+            multiplier *= var->dimensions[j];
+        }
         flatIndex += indices[i] * multiplier;
-        multiplier *= var->dimensions[i];
     }
     
     if (flatIndex >= 0 && flatIndex < var->arraySize) {
@@ -186,6 +190,7 @@ double getArrayElement(Interpreter *interp, const char *name, int *indices, int 
     Variable *var;
     int flatIndex;
     int i;
+    int j;
     int multiplier;
     
     var = findVariable(interp, name);
@@ -195,13 +200,16 @@ double getArrayElement(Interpreter *interp, const char *name, int *indices, int 
     
     /* Convertir les indices multi-dimensionnels en index plat (row-major order) */
     flatIndex = 0;
-    multiplier = 1;
-    for (i = numIndices - 1; i >= 0; i--) {
+    for (i = 0; i < numIndices; i++) {
         if (indices[i] < 0 || indices[i] >= var->dimensions[i]) {
             return 0.0; /* Index hors limites */
         }
+        /* Calculer le multiplicateur pour cette dimension */
+        multiplier = 1;
+        for (j = i + 1; j < numIndices; j++) {
+            multiplier *= var->dimensions[j];
+        }
         flatIndex += indices[i] * multiplier;
-        multiplier *= var->dimensions[i];
     }
     
     if (flatIndex >= 0 && flatIndex < var->arraySize) {

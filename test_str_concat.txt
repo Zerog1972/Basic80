@@ -1,0 +1,7 @@
+A = 42
+B = 3.14
+PRINT "A=" + A + " B=" + B
+PRINT "Calcul: " + (A + B)
+PRINT 100 + " est un nombre"
+PRINT "Total: " + (10 + 20 + 30)
+EXIT

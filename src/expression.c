@@ -56,7 +56,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
         strcpy(varName, tokens[*pos].value);
         
         if (isStringVariable(varName)) {
-             printf("Erreur de type: Variable chaine '%s' utilisee dans une expression numerique\n", varName);
+             reportError(interp, "Variable chaîne utilisée dans une expression numérique.");
              (*pos)++; /* Skip variable to avoid infinite loop if caller retries? Or just return 0 */
              return 0.0;
         }
@@ -306,7 +306,13 @@ double evaluateTerm(Interpreter *interp, Token *tokens, int *pos) {
         
         switch (op) {
             case TOK_MULTIPLY: result *= right; break;
-            case TOK_DIVIDE: if (right != 0) result /= right; break;
+            case TOK_DIVIDE: 
+                if (right != 0) {
+                    result /= right;
+                } else {
+                    reportError(interp, "Division par zéro.");
+                }
+                break;
             default: break;
         }
     }
@@ -322,7 +328,23 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
     int start, length, n;
     int strLen;
 
-    if (tokens[*pos].type == TOK_STRING) {
+    if (tokens[*pos].type == TOK_NUMBER) {
+        /* Convertir un nombre littéral en chaîne */
+        double numValue = atof(tokens[*pos].value);
+        result = (char*)malloc(50);
+        if (result) {
+            sprintf(result, "%.2f", numValue);
+        }
+        (*pos)++;
+    } else if (tokens[*pos].type == TOK_LPAREN) {
+        /* Expression entre parenthèses - peut être numérique */
+        int savedPos = *pos;
+        double numValue = evaluateExpression(interp, tokens, pos);
+        result = (char*)malloc(50);
+        if (result) {
+            sprintf(result, "%.2f", numValue);
+        }
+    } else if (tokens[*pos].type == TOK_STRING) {
         result = (char*)malloc(strlen(tokens[*pos].value) + 1);
         if (result) {
             strcpy(result, tokens[*pos].value);
@@ -332,11 +354,15 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         strcpy(varName, tokens[*pos].value);
         
         if (!isStringVariable(varName)) {
-             printf("Erreur de type: Variable numérique '%s' utilisée comme chaîne\n", varName);
-             (*pos)++;
-             result = (char*)malloc(1);
-             if (result) result[0] = '\0';
-             return result;
+            /* Variable numérique - la convertir en chaîne */
+            double numValue;
+            int savedPos = *pos;
+            numValue = evaluateExpression(interp, tokens, pos);
+            result = (char*)malloc(50);
+            if (result) {
+                sprintf(result, "%.2f", numValue);
+            }
+            return result;
         }
 
         (*pos)++;

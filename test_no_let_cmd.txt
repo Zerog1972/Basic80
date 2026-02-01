@@ -1,0 +1,3 @@
+LOAD "test_no_let.bas"
+RUN
+EXIT

@@ -1,0 +1,6 @@
+A = 42
+PRINT A
+B = 3.14
+PRINT B
+PRINT "Valeur:" ; A
+EXIT
