@@ -1,4 +1,4 @@
-# Interpréteur BASIC en C
+# Basic80
 
 Un interpréteur simple pour le langage BASIC classique.
 
@@ -66,7 +66,7 @@ Un interpréteur simple pour le langage BASIC classique.
 
 ### Compilation
 ```bash
-clang -std=c89 -pedantic -Wall -g main.c interpreter.c lexer.c variables.c expression.c control_flow.c commands.c -o basic.exe
+clang -std=c89 -pedantic -Wall -g -Iinclude src/*.c -o basic80.exe
 ```
 
 Ou utilisez la tâche VS Code: **C/C++: clang.exe build all files**
@@ -74,7 +74,7 @@ Ou utilisez la tâche VS Code: **C/C++: clang.exe build all files**
 ### Tests unitaires
 Compiler et exécuter les tests :
 ```bash
-clang -std=c89 -pedantic -Wall -g tests.c interpreter.c lexer.c variables.c expression.c control_flow.c commands.c -o tests.exe
+clang -std=c89 -pedantic -Wall -g -Iinclude tests/tests.c src/interpreter.c src/lexer.c src/variables.c src/expression.c src/control_flow.c src/commands.c -o tests.exe
 .\tests.exe
 ```
 
@@ -129,7 +129,7 @@ Le code est strictement conforme au standard **C89/ANSI C**.
 
 ### Exécution
 ```bash
-./basic.exe
+./basic80.exe
 ```
 
 ### Mode interactif
@@ -458,14 +458,20 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 
 ## Architecture
 
-### Fichiers:
+Le projet est organisé comme suit :
+- **src/** : Code source (`.c`)
+- **include/** : En-têtes (`.h`)
+- **tests/** : Tests unitaires et fichiers de données de test
+- **docs/** : Documentation supplémentaire
+
+### Fichiers sources (src/):
 - **main.c** - Programme principal et boucle interactive
-- **interpreter.h/c** - Noyau de l'interpréteur et orchestration (189 lignes)
-- **commands.h/c** - Commandes BASIC (PRINT, LET, DIM, INPUT) (161 lignes)
-- **control_flow.h/c** - Gestion du flux de contrôle (IF/FOR/GOTO/GOSUB) (295 lignes)
-- **expression.h/c** - Évaluation des expressions arithmétiques et chaînes (401 lignes)
-- **variables.h/c** - Gestion des variables et tableaux multi-dimensionnels (259 lignes)
-- **lexer.h/c** - Analyse lexicale et tokenisation (219 lignes)
+- **interpreter.c** - Noyau de l'interpréteur et orchestration
+- **commands.c** - Commandes BASIC (PRINT, LET, DIM, INPUT)
+- **control_flow.c** - Gestion du flux de contrôle (IF/FOR/GOTO/GOSUB)
+- **expression.c** - Évaluation des expressions arithmétiques et chaînes
+- **variables.c** - Gestion des variables et tableaux multi-dimensionnels
+- **lexer.c** - Analyse lexicale et tokenisation
 
 ### Composants:
 1. **Lexer** - Tokenise le code source (41 mots-clés, 56 types de tokens)

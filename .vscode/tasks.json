@@ -32,9 +32,10 @@
 				"-pedantic",
 				"-Wall",
 				"-g",
-				"*.c",
+				"src/*.c",
+				"-Iinclude",
 				"-o",
-				"${workspaceFolderBasename}.exe"
+				"basic80.exe"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"

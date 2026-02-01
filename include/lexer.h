@@ -62,11 +62,11 @@ typedef enum {
     TOK_COMMA,
     TOK_NEWLINE,
     TOK_EOF
-} TokenType;
+} BasicTokenType;
 
 /* Structure pour un token */
 typedef struct {
-    TokenType type;
+    BasicTokenType type;
     char *value;
     int lineNum;
 } Token;

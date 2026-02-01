@@ -1,5 +1,9 @@
 #include "interpreter.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 int main(void) {
     Interpreter *interp;
     char line[1024];
@@ -7,9 +11,13 @@ int main(void) {
     int i;
     Line *l;
     
+#ifdef _WIN32
+    SetConsoleOutputCP(65001); /* CP_UTF8 */
+#endif
+
     interp = createInterpreter();
     
-    printf("=== INTERPRÉTEUR BASIC ===\n");
+    printf("=== Basic80 ===\n");
     printf("Commandes disponibles:\n");
     printf("  - Numérotées: ajoutent au programme (ex: 10 PRINT \"Hello\")\n");
     printf("  - LIST: affiche le programme\n");

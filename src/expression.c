@@ -8,7 +8,7 @@
 /* Évaluer une condition (pour IF...THEN) */
 int evaluateCondition(Interpreter *interp, Token *tokens, int *pos) {
     double left, right;
-    TokenType op;
+    BasicTokenType op;
     
     left = evaluateExpression(interp, tokens, pos);
     
@@ -282,7 +282,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
 /* Évaluer un terme (multiplication et division) */
 double evaluateTerm(Interpreter *interp, Token *tokens, int *pos) {
     double result;
-    TokenType op;
+    BasicTokenType op;
     double right;
     
     result = evaluateFactor(interp, tokens, pos);
@@ -462,7 +462,7 @@ int isStringExpression(Interpreter *interp, Token *tokens, int pos) {
 /* Évaluer une expression (addition et soustraction) */
 double evaluateExpression(Interpreter *interp, Token *tokens, int *pos) {
     double result;
-    TokenType op;
+    BasicTokenType op;
     double right;
     
     result = evaluateTerm(interp, tokens, pos);

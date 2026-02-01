@@ -5,12 +5,12 @@
 			"name": "C/C++: clang.exe build and debug project",
 			"type": "cppvsdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}\\${workspaceFolderBasename}.exe",
+			"program": "${workspaceFolder}\\basic80.exe",
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
 			"environment": [],
-			"externalConsole": false,
+			"externalConsole": true,
 			"preLaunchTask": "C/C++: clang.exe build all files"
 		}
 	]

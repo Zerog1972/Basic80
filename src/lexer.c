@@ -5,7 +5,7 @@
 #include <ctype.h>
 
 /* Fonction privée pour vérifier si un mot est un mot-clé */
-static int isKeyword(const char *word, TokenType *type) {
+static int isKeyword(const char *word, BasicTokenType *type) {
     if (strcmp(word, "PRINT") == 0) { *type = TOK_PRINT; return 1; }
     if (strcmp(word, "LET") == 0) { *type = TOK_LET; return 1; }
     if (strcmp(word, "IF") == 0) { *type = TOK_IF; return 1; }
