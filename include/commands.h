@@ -23,4 +23,16 @@ void handleDim(Interpreter *interp, Token *tokens);
  * Lecture interactive d'une valeur numérique depuis l'utilisateur */
 void handleInput(Interpreter *interp, Token *tokens);
 
+/* Commande DATA
+ * Déclare des données constantes (numériques ou chaînes) */
+void handleData(Interpreter *interp, Token *tokens, int lineNum);
+
+/* Commande READ
+ * Lit séquentiellement les valeurs depuis les instructions DATA */
+void handleRead(Interpreter *interp, Token *tokens);
+
+/* Commande RESTORE
+ * Réinitialise le pointeur de lecture DATA */
+void handleRestore(Interpreter *interp, Token *tokens);
+
 #endif /* COMMANDS_H */

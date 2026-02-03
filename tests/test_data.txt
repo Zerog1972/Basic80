@@ -1,0 +1,3 @@
+LOAD "tests/test_data_simple.bas"
+RUN
+EXIT

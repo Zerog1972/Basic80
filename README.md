@@ -26,6 +26,9 @@ Le langage impose un typage strict basé sur le nom des variables :
 - **RETURN** - Retourne de la sous-routine
 - **IF...THEN...ELSE** - Exécution conditionnelle
 - **FOR...TO...STEP...NEXT** - Boucles avec compteur
+- **DATA** - Déclare des constantes dans le programme
+- **READ** - Lit les valeurs DATA dans les variables
+- **RESTORE** - Réinitialise le pointeur de lecture DATA (avec ou sans numéro de ligne)
 - **REM** - Commentaires
 - **END** - Termine le programme
 
@@ -40,7 +43,7 @@ Le langage impose un typage strict basé sur le nom des variables :
 - **SIN(x)** - Sinus (x en radians)
 - **COS(x)** - Cosinus (x en radians)
 - **TAN(x)** - Tangente (x en radians)
-- **ATAN(x)** - Arc Tangente (retourne radians)
+- **ATAN(x)** ou **ATN(x)** - Arc Tangente (retourne radians)
 - **ASIN(x)** - Arc Sinus (retourne radians)
 - **ACOS(x)** - Arc Cosinus (retourne radians)
 - **SINH(x)** - Sinus Hyperbolique
@@ -50,6 +53,7 @@ Le langage impose un typage strict basé sur le nom des variables :
 - **DEG(x)** - Convertit radians en degres
 - **SQR(x)** - Racine carrée
 - **ABS(x)** - Valeur absolue
+- **SGN(x)** - Signe du nombre (-1, 0 ou 1)
 - **INT(x)** - Partie entière (arrondi vers le bas)
 - **RND(x)** - Nombre aléatoire entre 0 et x-1
 - **RND** - Nombre aléatoire entre 0.0 et 1.0
@@ -60,18 +64,24 @@ Le langage impose un typage strict basé sur le nom des variables :
 
 ### Fonctions de chaînes:
 Ces fonctions manipulent des chaînes de caractères.
-- **LEN(s)** : Retourne la longueur de la chaîne `s`. (Retourne un nombre)
-- **ASC(s)** : Retourne le code ASCII du premier caractère de `s`. (Retourne un nombre)
-- **CHR(n)** : Retourne le caractère correspondant au code ASCII `n`. (Retourne une chaîne)
-- **MID(s, start, len)** : Retourne une sous-chaîne de `s` commençant à `start` (1-indexé) de longueur `len`. (Retourne une chaîne)
-- **LEFT(s, n)** : Retourne les `n` premiers caractères de `s`. (Retourne une chaîne)
-- **RIGHT(s, n)** : Retourne les `n` derniers caractères de `s`. (Retourne une chaîne)
+- **LEN(s$)** : Retourne la longueur de la chaîne `s$`. (Retourne un nombre)
+- **ASC(s$)** : Retourne le code ASCII du premier caractère de `s$`. (Retourne un nombre)
+- **CHR$(n)** : Retourne le caractère correspondant au code ASCII `n`. (Retourne une chaîne)
+- **MID(s$, start, len)** : Retourne une sous-chaîne de `s$` commençant à `start` (1-indexé) de longueur `len`. (Retourne une chaîne)
+- **LEFT(s$, n)** : Retourne les `n` premiers caractères de `s$`. (Retourne une chaîne)
+- **RIGHT(s$, n)** : Retourne les `n` derniers caractères de `s$`. (Retourne une chaîne)
+- **STR$(x)** : Convertit un nombre `x` en chaîne de caractères. (Retourne une chaîne)
+- **VAL(s$)** : Convertit une chaîne `s$` en nombre. (Retourne un nombre)
+- **SPACE$(n)** : Retourne une chaîne de `n` espaces. (Retourne une chaîne)
+- **STRING$(n, c)** : Retourne une chaîne de `n` répétitions du caractère `c` (code ASCII ou chaîne d'un caractère). (Retourne une chaîne)
 
 Exemple :
 ```basic
 LET A$ = "BONJOUR"
-PRINT LEN(A$)      ' Affiche 7
-PRINT LEFT(A$, 3)  ' Affiche BON
+PRINT LEN(A$)       ' Affiche 7
+PRINT LEFT(A$, 3)   ' Affiche BON
+PRINT CHR$(65)      ' Affiche A
+PRINT STR$(42)      ' Affiche 42
 ```
 L'opérateur `+` permet la concaténation de deux chaînes.
 
@@ -133,7 +143,9 @@ Les tests unitaires incluent :
   - Affectation de chaînes littérales
   - Copie de chaînes entre variables
   - Fonctions LEN(), ASC(), CHR(), MID(), LEFT(), RIGHT()
+  - Fonctions STR$(), VAL(), SPACE$(), STRING$()
   - Concaténation de chaînes avec l'opérateur +
+  - Conversions bidirectionnelles nombre ↔ chaîne
 - **Tests des boucles FOR** :
   - Boucle FOR simple (1 TO 5)
   - Boucle FOR avec STEP positif (0 TO 10 STEP 2)
@@ -142,8 +154,22 @@ Les tests unitaires incluent :
   - Boucles FOR imbriquées
   - Boucles FOR avec calculs (factorielle, somme des carrés)
   - Boucles FOR avec variables pour limites
+- **Tests des nouvelles fonctions** :
+  - Fonction mathématique ATN(x) - arc tangente
+  - Fonction mathématique SGN(x) - signe du nombre
+  - Fonction de chaîne STR$(x) - nombre vers chaîne
+  - Fonction de chaîne VAL(s) - chaîne vers nombre
+  - Fonction de chaîne SPACE$(n) - génération d'espaces
+  - Fonction de chaîne STRING$(n,c) - répétition de caractères
+- **Tests des commandes DATA/READ/RESTORE** :
+  - Lecture de nombres avec DATA/READ
+  - Lecture de chaînes avec DATA/READ
+  - Plusieurs statements DATA consécutifs
+  - RESTORE sans paramètre (retour au début)
+  - RESTORE avec numéro de ligne
+  - Détection d'erreur "Out of DATA"
 
-Total : **191 tests unitaires**
+Total : **254 tests unitaires**
 
 Le code est strictement conforme au standard **C89/ANSI C**.
 
@@ -478,7 +504,42 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 90 END
 ```
 
-### Exemple 28: Sauvegarder et charger un programme
+### Exemple 28: DATA, READ et RESTORE
+```basic
+10 DATA 100, 200, 300, 400, 500
+20 READ A, B, C
+30 PRINT "Premiers nombres:", A, B, C
+40 RESTORE
+50 READ X, Y
+60 PRINT "Apres RESTORE:", X, Y
+70 END
+```
+
+### Exemple 29: DATA avec chaînes
+```basic
+10 DATA "Alice", "Bob", "Charlie"
+20 DATA 25, 30, 35
+30 READ NOM1$, NOM2$, NOM3$
+40 READ AGE1, AGE2, AGE3
+50 PRINT NOM1$, "a", AGE1, "ans"
+60 PRINT NOM2$, "a", AGE2, "ans"
+70 PRINT NOM3$, "a", AGE3, "ans"
+80 END
+```
+
+### Exemple 30: RESTORE avec numéro de ligne
+```basic
+10 DATA 1, 2, 3
+20 DATA 4, 5, 6
+30 READ A, B
+40 PRINT "De la ligne 10:", A, B
+50 RESTORE 20
+60 READ X, Y
+70 PRINT "De la ligne 20:", X, Y
+80 END
+```
+
+### Exemple 31: Sauvegarder et charger un programme
 ```
 > 10 PRINT "Programme exemple"
 > 20 FOR I = 1 TO 3

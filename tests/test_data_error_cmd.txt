@@ -1,0 +1,3 @@
+LOAD "tests/test_data_error.bas"
+RUN
+EXIT

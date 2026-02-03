@@ -1,0 +1,131 @@
+/* ===== COMMANDES DATA/READ/RESTORE ===== */
+
+void handleData(Interpreter *interp, Token *tokens, int lineNum) {
+    int pos;
+    DataItem *newItem;
+    DataItem *last;
+    char buffer[1024];
+    
+    pos = 1; /* Sauter le token DATA */
+    
+    while (tokens[pos].type != TOK_EOF) {
+        /* Ignorer les virgules */
+        if (tokens[pos].type == TOK_COMMA) {
+            pos++;
+            continue;
+        }
+        
+        /* Créer un nouvel élément DATA */
+        newItem = malloc(sizeof(DataItem));
+        newItem->lineNum = lineNum;
+        newItem->next = NULL;
+        
+        /* Copier la valeur selon le type */
+        if (tokens[pos].type == TOK_STRING) {
+            newItem->value = malloc(strlen(tokens[pos].value) + 1);
+            strcpy(newItem->value, tokens[pos].value);
+        } else if (tokens[pos].type == TOK_NUMBER) {
+            newItem->value = malloc(strlen(tokens[pos].value) + 1);
+            strcpy(newItem->value, tokens[pos].value);
+        } else if (tokens[pos].type == TOK_MINUS && tokens[pos + 1].type == TOK_NUMBER) {
+            /* Gérer les nombres négatifs */
+            snprintf(buffer, sizeof(buffer), "-%s", tokens[pos + 1].value);
+            newItem->value = malloc(strlen(buffer) + 1);
+            strcpy(newItem->value, buffer);
+            pos++; /* Sauter le nombre après le moins */
+        } else {
+            /* Token non reconnu, ignorer */
+            free(newItem);
+            pos++;
+            continue;
+        }
+        
+        /* Ajouter à la fin de la liste */
+        if (!interp->dataList) {
+            interp->dataList = newItem;
+            interp->dataPointer = newItem;
+        } else {
+            last = interp->dataList;
+            while (last->next) {
+                last = last->next;
+            }
+            last->next = newItem;
+        }
+        
+        pos++;
+    }
+}
+
+void handleRead(Interpreter *interp, Token *tokens) {
+    int pos;
+    char varName[256];
+    
+    pos = 1; /* Sauter le token READ */
+    
+    while (tokens[pos].type != TOK_EOF) {
+        /* Ignorer les virgules */
+        if (tokens[pos].type == TOK_COMMA) {
+            pos++;
+            continue;
+        }
+        
+        if (tokens[pos].type != TOK_IDENTIFIER) {
+            reportError(interp, "Nom de variable attendu après READ");
+            return;
+        }
+        
+        strcpy(varName, tokens[pos].value);
+        
+        /* Vérifier s'il y a des données disponibles */
+        if (!interp->dataPointer) {
+            reportError(interp, "Out of DATA");
+            return;
+        }
+        
+        /* Lire la valeur selon le type de variable */
+        if (isStringVariable(varName)) {
+            /* Variable chaîne */
+            setStringVariable(interp, varName, interp->dataPointer->value);
+        } else {
+            /* Variable numérique */
+            double val = atof(interp->dataPointer->value);
+            setVariable(interp, varName, val);
+        }
+        
+        /* Avancer le pointeur DATA */
+        interp->dataPointer = interp->dataPointer->next;
+        
+        pos++;
+    }
+}
+
+void handleRestore(Interpreter *interp, Token *tokens) {
+    int targetLine;
+    DataItem *item;
+    
+    /* Si RESTORE sans argument, revenir au début */
+    if (tokens[1].type == TOK_EOF) {
+        interp->dataPointer = interp->dataList;
+        return;
+    }
+    
+    /* Si RESTORE avec numéro de ligne */
+    if (tokens[1].type == TOK_NUMBER) {
+        targetLine = (int)atof(tokens[1].value);
+        
+        /* Chercher le premier DATA à cette ligne */
+        item = interp->dataList;
+        while (item && item->lineNum < targetLine) {
+            item = item->next;
+        }
+        
+        if (item && item->lineNum == targetLine) {
+            interp->dataPointer = item;
+        } else {
+            /* Si la ligne n'existe pas, remettre au début */
+            interp->dataPointer = interp->dataList;
+        }
+    } else {
+        interp->dataPointer = interp->dataList;
+    }
+}

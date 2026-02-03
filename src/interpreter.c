@@ -11,6 +11,8 @@ Interpreter* createInterpreter(void) {
     interp->currentLine = NULL;
     interp->forStack = NULL;
     interp->callStack = NULL;
+    interp->dataList = NULL;
+    interp->dataPointer = NULL;
     interp->hasError = 0;
     return interp;
 }
@@ -72,6 +74,18 @@ void freeInterpreter(Interpreter *interp) {
         nextCall = callFrame->next;
         free(callFrame);
         callFrame = nextCall;
+    }
+    
+    /* Libérer les données DATA */
+    {
+        DataItem *dataItem = interp->dataList;
+        DataItem *nextData;
+        while (dataItem) {
+            nextData = dataItem->next;
+            free(dataItem->value);
+            free(dataItem);
+            dataItem = nextData;
+        }
     }
     
     free(interp);
@@ -174,6 +188,16 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
     }
     else if (tokens[0].type == TOK_INPUT) {
         handleInput(interp, tokens);
+    }
+    else if (tokens[0].type == TOK_READ) {
+        handleRead(interp, tokens);
+    }
+    else if (tokens[0].type == TOK_DATA) {
+        /* DATA ne peut être exécuté en mode direct, seulement dans un programme */
+        printf("Erreur: DATA ne peut être utilisé qu'à l'intérieur d'un programme.\n");
+    }
+    else if (tokens[0].type == TOK_RESTORE) {
+        handleRestore(interp, tokens);
     }
     else if (tokens[0].type == TOK_FOR) {
         /* FOR ne s'exécute que dans runProgram */
@@ -311,7 +335,12 @@ static int executeStatementInProgram(Interpreter *interp, const char *stmt, Line
     tokens = tokenize(stmt);
     controlFlowHandled = 0;
     
-    if (tokens[0].type == TOK_END) {
+    if (tokens[0].type == TOK_DATA) {
+        /* DATA a déjà été traité dans la première passe, ignorer ici */
+        freeTokens(tokens);
+        return 0;
+    }
+    else if (tokens[0].type == TOK_END) {
         freeTokens(tokens);
         return -1; /* Signal pour terminer le programme */
     }
@@ -367,8 +396,35 @@ void runProgram(Interpreter *interp) {
     int count;
     int i;
     int result;
+    Token *tokens;
     
     interp->hasError = 0;
+    
+    /* Première passe : extraire toutes les données DATA */
+    line = interp->program;
+    while (line) {
+        /* Diviser la ligne par ':' en ignorant ceux dans REM */
+        parts = splitByColon(line->code, &count);
+        
+        for (i = 0; i < count; i++) {
+            /* Ignorer les espaces au début */
+            char *stmt = parts[i];
+            while (*stmt && isspace(*stmt)) stmt++;
+            
+            if (*stmt) {
+                tokens = tokenize(stmt);
+                if (tokens[0].type == TOK_DATA) {
+                    handleData(interp, tokens, line->lineNum);
+                }
+                freeTokens(tokens);
+            }
+        }
+        
+        freeSplitArray(parts, count);
+        line = line->next;
+    }
+    
+    /* Deuxième passe : exécuter le programme */
     line = interp->program;
     while (line) {
         interp->currentLine = line;

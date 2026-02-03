@@ -32,6 +32,13 @@ typedef struct CallStack {
     struct CallStack *next;
 } CallStack;
 
+/* Structure pour stocker les données DATA */
+typedef struct DataItem {
+    char *value;  /* Stocke la valeur comme chaîne */
+    int lineNum;  /* Numéro de ligne pour RESTORE */
+    struct DataItem *next;
+} DataItem;
+
 /* Structure pour l'interpréteur */
 struct Interpreter {
     Line *program;
@@ -39,6 +46,8 @@ struct Interpreter {
     Line *currentLine;
     ForLoop *forStack;
     CallStack *callStack;
+    DataItem *dataList;      /* Liste chaînée des DATA */
+    DataItem *dataPointer;   /* Pointeur de lecture courant */
     int hasError;
 };
 

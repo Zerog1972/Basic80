@@ -1,0 +1,8 @@
+10 DATA 1, 2
+20 DATA 3, 4
+30 DATA 5, 6
+40 READ A, B
+50 PRINT "A="; A; " B="; B
+60 RESTORE 20
+70 READ X, Y
+80 PRINT "X="; X; " Y="; Y

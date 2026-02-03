@@ -114,6 +114,14 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             result = atan(arg);
         }
+    } else if (tokens[*pos].type == TOK_ATN) {
+        (*pos)++;
+        if (tokens[*pos].type == TOK_LPAREN) {
+            (*pos)++;
+            arg = evaluateExpression(interp, tokens, pos);
+            if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
+            result = atan(arg);
+        }
     } else if (tokens[*pos].type == TOK_ASIN) {
         (*pos)++;
         if (tokens[*pos].type == TOK_LPAREN) {
@@ -177,6 +185,17 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             arg = evaluateExpression(interp, tokens, pos);
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             result = floor(arg);
+        }
+    } else if (tokens[*pos].type == TOK_SGN) {
+        (*pos)++;
+        if (tokens[*pos].type == TOK_LPAREN) {
+            (*pos)++;
+            arg = evaluateExpression(interp, tokens, pos);
+            if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
+            /* SGN retourne -1, 0 ou 1 selon le signe */
+            if (arg < 0) result = -1.0;
+            else if (arg > 0) result = 1.0;
+            else result = 0.0;
         }
     } else if (tokens[*pos].type == TOK_RND) {
         (*pos)++;
@@ -279,6 +298,25 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
                 if (strlen(str) > 0) {
                     result = (double)((unsigned char)str[0]);
                 }
+            }
+            if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
+        }
+    } else if (tokens[*pos].type == TOK_VAL) {
+        /* VAL(string) - convertit une chaîne en nombre */
+        char varName[256];
+        char *str;
+        (*pos)++;
+        if (tokens[*pos].type == TOK_LPAREN) {
+            (*pos)++;
+            if (tokens[*pos].type == TOK_STRING) {
+                str = tokens[*pos].value;
+                result = atof(str);
+                (*pos)++;
+            } else if (tokens[*pos].type == TOK_IDENTIFIER) {
+                strcpy(varName, tokens[*pos].value);
+                (*pos)++;
+                str = getStringVariable(interp, varName);
+                result = atof(str);
             }
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
         }
@@ -450,6 +488,64 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             }
             free(str);
         }
+    } else if (tokens[*pos].type == TOK_STR) {
+        /* STR$(x) - convertit un nombre en chaîne */
+        double numValue;
+        (*pos)++;
+        if (tokens[*pos].type == TOK_LPAREN) {
+            (*pos)++;
+            numValue = evaluateExpression(interp, tokens, pos);
+            if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
+            result = (char*)malloc(50);
+            if (result) {
+                sprintf(result, "%.10g", numValue);
+            }
+        }
+    } else if (tokens[*pos].type == TOK_SPACE) {
+        /* SPACE$(n) - retourne une chaîne de n espaces */
+        int i;
+        (*pos)++;
+        if (tokens[*pos].type == TOK_LPAREN) {
+            (*pos)++;
+            n = (int)evaluateExpression(interp, tokens, pos);
+            if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
+            if (n < 0) n = 0;
+            result = (char*)malloc(n + 1);
+            if (result) {
+                for (i = 0; i < n; i++) {
+                    result[i] = ' ';
+                }
+                result[n] = '\0';
+            }
+        }
+    } else if (tokens[*pos].type == TOK_STRING_FUNC) {
+        /* STRING$(n,c) - répète n fois le caractère c */
+        int i;
+        char c;
+        (*pos)++;
+        if (tokens[*pos].type == TOK_LPAREN) {
+            (*pos)++;
+            n = (int)evaluateExpression(interp, tokens, pos);
+            if (tokens[*pos].type == TOK_COMMA) (*pos)++;
+            /* Le caractère peut être un code ASCII ou une chaîne */
+            if (tokens[*pos].type == TOK_NUMBER) {
+                c = (char)((int)evaluateExpression(interp, tokens, pos));
+            } else if (tokens[*pos].type == TOK_STRING) {
+                c = tokens[*pos].value[0];
+                (*pos)++;
+            } else {
+                c = ' ';
+            }
+            if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
+            if (n < 0) n = 0;
+            result = (char*)malloc(n + 1);
+            if (result) {
+                for (i = 0; i < n; i++) {
+                    result[i] = c;
+                }
+                result[n] = '\0';
+            }
+        }
     }
 
     if (!result) {
@@ -503,7 +599,10 @@ int isStringExpression(Interpreter *interp, Token *tokens, int pos) {
            tokens[pos].type == TOK_CHR ||
            tokens[pos].type == TOK_MID ||
            tokens[pos].type == TOK_LEFT ||
-           tokens[pos].type == TOK_RIGHT;
+           tokens[pos].type == TOK_RIGHT ||
+           tokens[pos].type == TOK_STR ||
+           tokens[pos].type == TOK_SPACE ||
+           tokens[pos].type == TOK_STRING_FUNC;
 }
 
 /* Évaluer une expression (addition et soustraction) */

@@ -22,12 +22,16 @@ static int isKeyword(const char *word, BasicTokenType *type) {
     if (strcmp(word, "NEXT") == 0) { *type = TOK_NEXT; return 1; }
     if (strcmp(word, "END") == 0) { *type = TOK_END; return 1; }
     if (strcmp(word, "REM") == 0) { *type = TOK_REM; return 1; }
+    if (strcmp(word, "READ") == 0) { *type = TOK_READ; return 1; }
+    if (strcmp(word, "DATA") == 0) { *type = TOK_DATA; return 1; }
+    if (strcmp(word, "RESTORE") == 0) { *type = TOK_RESTORE; return 1; }
     if (strcmp(word, "SAVE") == 0) { *type = TOK_SAVE; return 1; }
     if (strcmp(word, "LOAD") == 0) { *type = TOK_LOAD; return 1; }
     if (strcmp(word, "SIN") == 0) { *type = TOK_SIN; return 1; }
     if (strcmp(word, "COS") == 0) { *type = TOK_COS; return 1; }
     if (strcmp(word, "TAN") == 0) { *type = TOK_TAN; return 1; }
     if (strcmp(word, "ATAN") == 0) { *type = TOK_ATAN; return 1; }
+    if (strcmp(word, "ATN") == 0) { *type = TOK_ATN; return 1; }
     if (strcmp(word, "ASIN") == 0) { *type = TOK_ASIN; return 1; }
     if (strcmp(word, "ACOS") == 0) { *type = TOK_ACOS; return 1; }
     if (strcmp(word, "SINH") == 0) { *type = TOK_SINH; return 1; }
@@ -43,12 +47,17 @@ static int isKeyword(const char *word, BasicTokenType *type) {
     if (strcmp(word, "LOG10") == 0) { *type = TOK_LOG10; return 1; }
     if (strcmp(word, "DEG") == 0) { *type = TOK_DEG; return 1; }
     if (strcmp(word, "RAD") == 0) { *type = TOK_RAD; return 1; }
+    if (strcmp(word, "SGN") == 0) { *type = TOK_SGN; return 1; }
     if (strcmp(word, "LEN") == 0) { *type = TOK_LEN; return 1; }
     if (strcmp(word, "MID") == 0) { *type = TOK_MID; return 1; }
     if (strcmp(word, "LEFT") == 0) { *type = TOK_LEFT; return 1; }
     if (strcmp(word, "RIGHT") == 0) { *type = TOK_RIGHT; return 1; }
-    if (strcmp(word, "CHR") == 0) { *type = TOK_CHR; return 1; }
+    if (strcmp(word, "CHR$") == 0) { *type = TOK_CHR; return 1; }
     if (strcmp(word, "ASC") == 0) { *type = TOK_ASC; return 1; }
+    if (strcmp(word, "STR$") == 0) { *type = TOK_STR; return 1; }
+    if (strcmp(word, "VAL") == 0) { *type = TOK_VAL; return 1; }
+    if (strcmp(word, "SPACE$") == 0) { *type = TOK_SPACE; return 1; }
+    if (strcmp(word, "STRING$") == 0) { *type = TOK_STRING_FUNC; return 1; }
     return 0;
 }
 

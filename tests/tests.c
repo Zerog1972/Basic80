@@ -719,12 +719,12 @@ void test_interpreteur_dim_indice_variable(void) {
     addLine(interp, 30, "LET E(I) = I * I");
     addLine(interp, 40, "NEXT I");
     addLine(interp, 50, "LET IDX = 3");
-    addLine(interp, 60, "LET VAL = E(IDX)");
+    addLine(interp, 60, "LET RESULT = E(IDX)");
     addLine(interp, 70, "END");
     
     runProgram(interp);
     
-    ASSERT_DOUBLE_EQUAL(getVariable(interp, "VAL"), 9.0, "E(3) = 3*3 = 9");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "RESULT"), 9.0, "E(3) = 3*3 = 9");
     
     freeInterpreter(interp);
 }
@@ -902,28 +902,28 @@ void test_interpreteur_dim_3d_boucles(void) {
     interp = createInterpreter();
     
     /* Remplir tableau 3D avec boucles triples */
-    addLine(interp, 10, "DIM DATA(2, 2, 2)");
+    addLine(interp, 10, "DIM CUBE3D(2, 2, 2)");
     addLine(interp, 20, "FOR I = 0 TO 1");
     addLine(interp, 30, "FOR J = 0 TO 1");
     addLine(interp, 40, "FOR K = 0 TO 1");
-    addLine(interp, 50, "LET DATA(I, J, K) = I * 4 + J * 2 + K + 1");
+    addLine(interp, 50, "LET CUBE3D(I, J, K) = I * 4 + J * 2 + K + 1");
     addLine(interp, 60, "NEXT K");
     addLine(interp, 70, "NEXT J");
     addLine(interp, 80, "NEXT I");
-    addLine(interp, 90, "LET S1 = DATA(0, 0, 0)");
-    addLine(interp, 100, "LET S2 = DATA(0, 0, 1)");
-    addLine(interp, 110, "LET S3 = DATA(0, 1, 0)");
-    addLine(interp, 120, "LET S4 = DATA(1, 0, 0)");
-    addLine(interp, 130, "LET S5 = DATA(1, 1, 1)");
+    addLine(interp, 90, "LET S1 = CUBE3D(0, 0, 0)");
+    addLine(interp, 100, "LET S2 = CUBE3D(0, 0, 1)");
+    addLine(interp, 110, "LET S3 = CUBE3D(0, 1, 0)");
+    addLine(interp, 120, "LET S4 = CUBE3D(1, 0, 0)");
+    addLine(interp, 130, "LET S5 = CUBE3D(1, 1, 1)");
     addLine(interp, 140, "END");
     
     runProgram(interp);
     
-    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S1"), 1.0, "DATA(0,0,0) = 1");
-    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S2"), 2.0, "DATA(0,0,1) = 2");
-    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S3"), 3.0, "DATA(0,1,0) = 3");
-    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S4"), 5.0, "DATA(1,0,0) = 5");
-    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S5"), 8.0, "DATA(1,1,1) = 8");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S1"), 1.0, "CUBE3D(0,0,0) = 1");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S2"), 2.0, "CUBE3D(0,0,1) = 2");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S3"), 3.0, "CUBE3D(0,1,0) = 3");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S4"), 5.0, "CUBE3D(1,0,0) = 5");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "S5"), 8.0, "CUBE3D(1,1,1) = 8");
     
     freeInterpreter(interp);
 }
@@ -1521,16 +1521,16 @@ void test_interpreteur_chaines_chr(void) {
     interp = createInterpreter();
     
     /* Fonction CHR - convertit code ASCII en caractère */
-    addLine(interp, 10, "LET A$ = CHR(65)");
-    addLine(interp, 20, "LET Z$ = CHR(90)");
-    addLine(interp, 30, "LET SPACE$ = CHR(32)");
+    addLine(interp, 10, "LET A$ = CHR$(65)");
+    addLine(interp, 20, "LET Z$ = CHR$(90)");
+    addLine(interp, 30, "LET SPC$ = CHR$(32)");
     addLine(interp, 40, "END");
     
     runProgram(interp);
     
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "A$"), "A", "CHR(65) = A");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "Z$"), "Z", "CHR(90) = Z");
-    ASSERT_STRING_EQUAL(getStringVariable(interp, "SPACE$"), " ", "CHR(32) = espace");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "A$"), "A", "CHR$(65) = A");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "Z$"), "Z", "CHR$(90) = Z");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "SPC$"), " ", "CHR$(32) = espace");
     
     freeInterpreter(interp);
 }
@@ -1623,6 +1623,189 @@ void test_interpreteur_chaines_concat(void) {
     freeInterpreter(interp);
 }
 
+void test_interpreteur_fonctions_atn(void) {
+    Interpreter *interp;
+    double result;
+    
+    printf("\n=== Tests de l'interpreteur - Fonction ATN ===\n");
+    
+    interp = createInterpreter();
+    
+    addLine(interp, 10, "LET A = ATN(1)");
+    addLine(interp, 20, "LET B = ATN(0)");
+    addLine(interp, 30, "LET C = ATN(-1)");
+    addLine(interp, 40, "LET D = ATN(1.732)");
+    addLine(interp, 50, "END");
+    
+    runProgram(interp);
+    
+    result = getVariable(interp, "A");
+    ASSERT_DOUBLE_EQUAL(result, 0.785, "ATN(1) = pi/4 ≈ 0.785");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "B"), 0.0, "ATN(0) = 0");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), -0.785, "ATN(-1) = -pi/4");
+    result = getVariable(interp, "D");
+    ASSERT_DOUBLE_EQUAL(result, 1.047, "ATN(√3) ≈ pi/3");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_fonctions_sgn(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonction SGN ===\n");
+    
+    interp = createInterpreter();
+    
+    addLine(interp, 10, "LET A = SGN(42)");
+    addLine(interp, 20, "LET B = SGN(0)");
+    addLine(interp, 30, "LET C = SGN(-17)");
+    addLine(interp, 40, "LET D = SGN(0.001)");
+    addLine(interp, 50, "LET E = SGN(-0.001)");
+    addLine(interp, 60, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "A"), 1.0, "SGN(42) = 1");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "B"), 0.0, "SGN(0) = 0");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), -1.0, "SGN(-17) = -1");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "D"), 1.0, "SGN(0.001) = 1");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "E"), -1.0, "SGN(-0.001) = -1");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_fonctions_str(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonction STR$ ===\n");
+    
+    interp = createInterpreter();
+    
+    addLine(interp, 10, "LET A$ = STR$(42)");
+    addLine(interp, 20, "LET B$ = STR$(3.14)");
+    addLine(interp, 30, "LET C$ = STR$(-17)");
+    addLine(interp, 40, "LET D$ = STR$(0)");
+    addLine(interp, 50, "LET X = 123");
+    addLine(interp, 60, "LET E$ = STR$(X)");
+    addLine(interp, 70, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "A$"), "42", "STR$(42) = '42'");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "B$"), "3.14", "STR$(3.14) = '3.14'");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "C$"), "-17", "STR$(-17) = '-17'");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "D$"), "0", "STR$(0) = '0'");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "E$"), "123", "STR$(variable) = '123'");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_fonctions_val(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonction VAL ===\n");
+    
+    interp = createInterpreter();
+    
+    addLine(interp, 10, "LET A = VAL(\"42\")");
+    addLine(interp, 20, "LET B = VAL(\"3.14\")");
+    addLine(interp, 30, "LET C = VAL(\"-17\")");
+    addLine(interp, 40, "LET D = VAL(\"0\")");
+    addLine(interp, 50, "LET S$ = \"123\"");
+    addLine(interp, 60, "LET E = VAL(S$)");
+    addLine(interp, 70, "LET F = VAL(\"12.5\") * 2");
+    addLine(interp, 80, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "A"), 42.0, "VAL('42') = 42");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "B"), 3.14, "VAL('3.14') = 3.14");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), -17.0, "VAL('-17') = -17");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "D"), 0.0, "VAL('0') = 0");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "E"), 123.0, "VAL(variable) = 123");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "F"), 25.0, "VAL('12.5') * 2 = 25");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_fonctions_space(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonction SPACE$ ===\n");
+    
+    interp = createInterpreter();
+    
+    addLine(interp, 10, "LET A$ = SPACE$(0)");
+    addLine(interp, 20, "LET B$ = SPACE$(1)");
+    addLine(interp, 30, "LET C$ = SPACE$(5)");
+    addLine(interp, 40, "LET D$ = \"[\" + SPACE$(3) + \"]\"");
+    addLine(interp, 50, "LET N = 4");
+    addLine(interp, 60, "LET E$ = SPACE$(N)");
+    addLine(interp, 70, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_EQUAL(strlen(getStringVariable(interp, "A$")), 0, "SPACE$(0) longueur = 0");
+    ASSERT_EQUAL(strlen(getStringVariable(interp, "B$")), 1, "SPACE$(1) longueur = 1");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "B$"), " ", "SPACE$(1) = ' '");
+    ASSERT_EQUAL(strlen(getStringVariable(interp, "C$")), 5, "SPACE$(5) longueur = 5");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "D$"), "[   ]", "Concat avec SPACE$");
+    ASSERT_EQUAL(strlen(getStringVariable(interp, "E$")), 4, "SPACE$(variable) longueur = 4");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_fonctions_string(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - Fonction STRING$ ===\n");
+    
+    interp = createInterpreter();
+    
+    addLine(interp, 10, "LET A$ = STRING$(5, 65)");
+    addLine(interp, 20, "LET B$ = STRING$(3, \"X\")");
+    addLine(interp, 30, "LET C$ = STRING$(0, \"A\")");
+    addLine(interp, 40, "LET D$ = STRING$(4, 42)");
+    addLine(interp, 50, "LET N = 6");
+    addLine(interp, 60, "LET E$ = STRING$(N, \"-\")");
+    addLine(interp, 70, "LET F$ = \"[\" + STRING$(10, \"=\") + \"]\"");
+    addLine(interp, 80, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "A$"), "AAAAA", "STRING$(5, 65) = 'AAAAA'");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "B$"), "XXX", "STRING$(3, 'X') = 'XXX'");
+    ASSERT_EQUAL(strlen(getStringVariable(interp, "C$")), 0, "STRING$(0, 'A') longueur = 0");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "D$"), "****", "STRING$(4, 42) = '****'");
+    ASSERT_EQUAL(strlen(getStringVariable(interp, "E$")), 6, "STRING$(variable, char) longueur = 6");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "F$"), "[==========]", "Concat avec STRING$");
+    
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_str_val_round_trip(void) {
+    Interpreter *interp;
+    
+    printf("\n=== Tests de l'interpreteur - STR$/VAL round-trip ===\n");
+    
+    interp = createInterpreter();
+    
+    addLine(interp, 10, "LET X = 42.5");
+    addLine(interp, 20, "LET S$ = STR$(X)");
+    addLine(interp, 30, "LET Y = VAL(S$)");
+    addLine(interp, 40, "LET EGAL = 0");
+    addLine(interp, 50, "IF X = Y THEN LET EGAL = 1");
+    addLine(interp, 60, "END");
+    
+    runProgram(interp);
+    
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "X"), 42.5, "X = 42.5");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "Y"), 42.5, "Y = VAL(STR(X)) = 42.5");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "EGAL"), 1.0, "X = Y après round-trip");
+    
+    freeInterpreter(interp);
+}
+
 /* Fonction principale des tests */
 int main(void) {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -1694,6 +1877,17 @@ int main(void) {
     test_interpreteur_chaines_left();
     test_interpreteur_chaines_right();
     test_interpreteur_chaines_concat();
+    
+    /* Tests des nouvelles fonctions mathématiques */
+    test_interpreteur_fonctions_atn();
+    test_interpreteur_fonctions_sgn();
+    
+    /* Tests des nouvelles fonctions de chaînes */
+    test_interpreteur_fonctions_str();
+    test_interpreteur_fonctions_val();
+    test_interpreteur_fonctions_space();
+    test_interpreteur_fonctions_string();
+    test_interpreteur_str_val_round_trip();
     
     /* Tests des boucles FOR */
     test_interpreteur_for_simple();

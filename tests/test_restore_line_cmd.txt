@@ -1,0 +1,3 @@
+LOAD "tests/test_restore_line.bas"
+RUN
+EXIT
