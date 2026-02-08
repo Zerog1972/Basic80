@@ -31,6 +31,7 @@ Le langage impose un typage strict basé sur le nom des variables :
 - **RESTORE** - Réinitialise le pointeur de lecture DATA (avec ou sans numéro de ligne)
 - **REM** - Commentaires
 - **END** - Termine le programme
+- **HELP** - Affiche l'aide sur les commandes disponibles
 
 ### Opérateurs mathématiques:
 - `+` Addition
@@ -186,6 +187,7 @@ Le code est strictement conforme au standard **C89/ANSI C**.
 - `NEW` - Efface le programme
 - `SAVE "fichier.bas"` - Sauvegarde le programme dans un fichier
 - `LOAD "fichier.bas"` - Charge un programme depuis un fichier
+- `HELP` - Affiche l'aide sur les commandes (utilisez `HELP COMMANDE` pour plus de détails)
 - `EXIT` - Quitte l'interpréteur
 
 **Lignes numérotées:**
@@ -539,7 +541,54 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 80 END
 ```
 
-### Exemple 31: Sauvegarder et charger un programme
+### Exemple 31: Utiliser l'aide interactive
+```
+> HELP
+=== BASIC80 - Commandes disponibles ===
+
+Commandes de base:
+  PRINT    - Afficher du texte ou des valeurs
+  LET      - Assigner une valeur a une variable
+  INPUT    - Saisir une valeur au clavier
+  REM      - Ajouter un commentaire
+  ...
+
+Tapez HELP [COMMANDE] pour plus de details.
+Exemple: HELP PRINT
+
+> HELP PRINT
+=== PRINT ===
+
+Syntaxe: PRINT [expression [,|; expression]...]
+
+Description:
+  Affiche une ou plusieurs expressions a l'ecran.
+  Les expressions peuvent etre numeriques ou des chaines.
+
+Separateurs:
+  , (virgule)      : Tabulation entre expressions
+  ; (point-virgule): Pas d'espace entre expressions
+  Fin de ligne     : Retour a la ligne automatique
+
+Exemples:
+  PRINT "Hello"           -> Affiche: Hello
+  PRINT 42                -> Affiche: 42.00
+  PRINT A, B              -> Affiche: 10.00 20.00
+  PRINT "X="; X           -> Affiche: X=5.00
+
+> HELP FOR
+=== FOR / NEXT ===
+
+Syntaxe: FOR variable = debut TO fin [STEP increment]
+         ... instructions ...
+         NEXT [variable]
+
+Description:
+  Boucle avec compteur.
+  STEP est optionnel (par defaut 1).
+```
+
+### Exemple 32: Sauvegarder et charger un programme
 ```
 > 10 PRINT "Programme exemple"
 > 20 FOR I = 1 TO 3

@@ -66,16 +66,30 @@ void setStringVariable(Interpreter *interp, const char *name, const char *value)
                 free(var->strValue);
             }
             var->strValue = malloc(strlen(value) + 1);
+            if (!var->strValue) {
+                var->strValue = NULL;
+                return;
+            }
             strcpy(var->strValue, value);
             var->isString = 1;
         }
     } else {
         newVar = malloc(sizeof(Variable));
+        if (!newVar) return;
         newVar->name = malloc(strlen(name) + 1);
+        if (!newVar->name) {
+            free(newVar);
+            return;
+        }
         strcpy(newVar->name, name);
         newVar->value = 0.0;
         newVar->isString = 1;
         newVar->strValue = malloc(strlen(value) + 1);
+        if (!newVar->strValue) {
+            free(newVar->name);
+            free(newVar);
+            return;
+        }
         strcpy(newVar->strValue, value);
         newVar->isArray = 0;
         newVar->arrayValues = NULL;
@@ -122,17 +136,32 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
         var->arraySize = totalSize;
         var->numDimensions = numDims;
         var->dimensions = malloc(sizeof(int) * numDims);
+        if (!var->dimensions) {
+            var->isArray = 0;
+            return;
+        }
         for (i = 0; i < numDims; i++) {
             var->dimensions[i] = dims[i];
         }
         var->arrayValues = malloc(sizeof(double) * totalSize);
+        if (!var->arrayValues) {
+            free(var->dimensions);
+            var->dimensions = NULL;
+            var->isArray = 0;
+            return;
+        }
         for (i = 0; i < totalSize; i++) {
             var->arrayValues[i] = 0.0;
         }
     } else {
         /* Créer une nouvelle variable tableau */
         newVar = malloc(sizeof(Variable));
+        if (!newVar) return;
         newVar->name = malloc(strlen(name) + 1);
+        if (!newVar->name) {
+            free(newVar);
+            return;
+        }
         strcpy(newVar->name, name);
         newVar->value = 0.0;
         newVar->isString = 0;
@@ -141,10 +170,21 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
         newVar->arraySize = totalSize;
         newVar->numDimensions = numDims;
         newVar->dimensions = malloc(sizeof(int) * numDims);
+        if (!newVar->dimensions) {
+            free(newVar->name);
+            free(newVar);
+            return;
+        }
         for (i = 0; i < numDims; i++) {
             newVar->dimensions[i] = dims[i];
         }
         newVar->arrayValues = malloc(sizeof(double) * totalSize);
+        if (!newVar->arrayValues) {
+            free(newVar->dimensions);
+            free(newVar->name);
+            free(newVar);
+            return;
+        }
         for (i = 0; i < totalSize; i++) {
             newVar->arrayValues[i] = 0.0;
         }

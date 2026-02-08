@@ -1,0 +1,16 @@
+10 REM Test de gestion mémoire robuste
+20 PRINT "Test 1: Tableaux multidimensionnels"
+30 DIM A(10, 10)
+40 LET A(5, 5) = 42
+50 PRINT "A(5,5) ="; A(5, 5)
+60 PRINT "Test 2: Variables chaînes"
+70 LET B$ = "Hello"
+80 LET C$ = " World"
+90 PRINT B$ + C$
+100 PRINT "Test 3: DATA/READ"
+110 DATA 10, 20, 30
+120 READ X, Y, Z
+130 PRINT "X="; X; " Y="; Y; " Z="; Z
+140 PRINT "Tests réussis!"
+RUN
+EXIT

@@ -1,0 +1,28 @@
+REM Fichier de test pour le système d'erreurs amélioré
+REM Ce fichier contient des exemples de différents types d'erreurs
+
+==================== TEST 1: Erreur de syntaxe ====================
+LOAD tests/test_error_context.bas
+RUN
+
+==================== TEST 2: Erreur READ sans DATA ====================
+NEW
+10 READ A, B, C
+20 PRINT A, B, C
+RUN
+
+==================== TEST 3: Affectation correcte puis erreur ====================
+NEW
+10 LET A = 5
+20 LET B$ = "Test"
+30 PRINT A, B$
+40 LET C = B$
+RUN
+
+==================== TEST 4: Division par zéro en cours d'exécution ====================
+NEW
+10 LET X = 10
+20 LET Y = 0
+30 LET Z = X / Y
+40 PRINT Z
+RUN

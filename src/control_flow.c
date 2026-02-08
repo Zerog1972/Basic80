@@ -133,6 +133,10 @@ int handleGosub(Interpreter *interp, Token *tokens, Line **currentLine) {
         if (target) {
             /* Empiler la ligne suivante pour le RETURN */
             newCall = malloc(sizeof(CallStack));
+            if (!newCall) {
+                reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Mémoire insuffisante pour GOSUB");
+                return 0;
+            }
             newCall->returnLine = (*currentLine)->next;
             newCall->next = interp->callStack;
             interp->callStack = newCall;
@@ -214,7 +218,16 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
                 } else {
                     /* Créer une nouvelle boucle FOR */
                     forLoop = malloc(sizeof(ForLoop));
+                    if (!forLoop) {
+                        reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Mémoire insuffisante pour FOR");
+                        return 0;
+                    }
                     forLoop->varName = malloc(strlen(varName) + 1);
+                    if (!forLoop->varName) {
+                        free(forLoop);
+                        reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Mémoire insuffisante pour FOR");
+                        return 0;
+                    }
                     strcpy(forLoop->varName, varName);
                     forLoop->endValue = endVal;
                     forLoop->stepValue = stepVal;

@@ -53,34 +53,48 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
         result = atof(tokens[*pos].value);
         (*pos)++;
     } else if (tokens[*pos].type == TOK_IDENTIFIER) {
+        CustomNumericFunction customFunc;
+        
         strcpy(varName, tokens[*pos].value);
         
-        if (isStringVariable(varName)) {
-             reportError(interp, "Variable chaîne utilisée dans une expression numérique.");
-             (*pos)++; /* Skip variable to avoid infinite loop if caller retries? Or just return 0 */
-             return 0.0;
-        }
-
-        (*pos)++;
-        
-        /* Vérifier si c'est un accès à un tableau */
-        if (tokens[*pos].type == TOK_LPAREN) {
-            (*pos)++;
-            numIndices = 0;
-            /* Lire tous les indices séparés par des virgules */
-            while (numIndices < 10) {
-                indices[numIndices] = (int)evaluateExpression(interp, tokens, pos);
-                numIndices++;
-                if (tokens[*pos].type == TOK_COMMA) {
-                    (*pos)++; /* Passer la virgule */
-                } else {
-                    break; /* Fin des indices */
-                }
+        /* Vérifier d'abord si c'est une fonction personnalisée */
+        customFunc = findCustomNumericFunction(interp, varName);
+        if (customFunc) {
+            (*pos)++; /* Passer le nom de la fonction */
+            if (tokens[*pos].type == TOK_LPAREN) {
+                (*pos)++; /* Passer la parenthèse ouvrante */
+                result = customFunc(interp, tokens, pos);
+                if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             }
-            if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
-            result = getArrayElement(interp, varName, indices, numIndices);
         } else {
-            result = getVariable(interp, varName);
+            /* C'est une variable ou un tableau */
+            if (isStringVariable(varName)) {
+                reportErrorEx(interp, ERR_TYPE_MISMATCH, *pos, "Variable chaîne utilisée dans une expression numérique.");
+                (*pos)++; /* Skip variable to avoid infinite loop if caller retries? Or just return 0 */
+                return 0.0;
+            }
+
+            (*pos)++;
+            
+            /* Vérifier si c'est un accès à un tableau */
+            if (tokens[*pos].type == TOK_LPAREN) {
+                (*pos)++;
+                numIndices = 0;
+                /* Lire tous les indices séparés par des virgules */
+                while (numIndices < 10) {
+                    indices[numIndices] = (int)evaluateExpression(interp, tokens, pos);
+                    numIndices++;
+                    if (tokens[*pos].type == TOK_COMMA) {
+                        (*pos)++; /* Passer la virgule */
+                    } else {
+                        break; /* Fin des indices */
+                    }
+                }
+                if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
+                result = getArrayElement(interp, varName, indices, numIndices);
+            } else {
+                result = getVariable(interp, varName);
+            }
         }
     } else if (tokens[*pos].type == TOK_SIN) {
         (*pos)++;
@@ -348,7 +362,7 @@ double evaluateTerm(Interpreter *interp, Token *tokens, int *pos) {
                 if (right != 0) {
                     result /= right;
                 } else {
-                    reportError(interp, "Division par zéro.");
+                    reportErrorEx(interp, ERR_DIVISION_ZERO, *pos - 1, "Division par zéro.");
                 }
                 break;
             default: break;
@@ -372,42 +386,69 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         result = (char*)malloc(50);
         if (result) {
             sprintf(result, "%.2f", numValue);
+        } else {
+            result = (char*)malloc(1);
+            if (result) result[0] = '\0';
         }
         (*pos)++;
     } else if (tokens[*pos].type == TOK_LPAREN) {
         /* Expression entre parenthèses - peut être numérique */
-        int savedPos = *pos;
         double numValue = evaluateExpression(interp, tokens, pos);
         result = (char*)malloc(50);
         if (result) {
             sprintf(result, "%.2f", numValue);
+        } else {
+            result = (char*)malloc(1);
+            if (result) result[0] = '\0';
         }
     } else if (tokens[*pos].type == TOK_STRING) {
         result = (char*)malloc(strlen(tokens[*pos].value) + 1);
         if (result) {
             strcpy(result, tokens[*pos].value);
+        } else {
+            result = (char*)malloc(1);
+            if (result) result[0] = '\0';
         }
         (*pos)++;
     } else if (tokens[*pos].type == TOK_IDENTIFIER) {
+        CustomStringFunction customFunc;
+        
         strcpy(varName, tokens[*pos].value);
         
-        if (!isStringVariable(varName)) {
-            /* Variable numérique - la convertir en chaîne */
-            double numValue;
-            int savedPos = *pos;
-            numValue = evaluateExpression(interp, tokens, pos);
-            result = (char*)malloc(50);
-            if (result) {
-                sprintf(result, "%.2f", numValue);
+        /* Vérifier d'abord si c'est une fonction chaîne personnalisée */
+        customFunc = findCustomStringFunction(interp, varName);
+        if (customFunc) {
+            (*pos)++; /* Passer le nom de la fonction */
+            if (tokens[*pos].type == TOK_LPAREN) {
+                (*pos)++; /* Passer la parenthèse ouvrante */
+                result = customFunc(interp, tokens, pos);
+                if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             }
-            return result;
-        }
+        } else {
+            /* C'est une variable */
+            if (!isStringVariable(varName)) {
+                /* Variable numérique - la convertir en chaîne */
+                double numValue;
+                numValue = evaluateExpression(interp, tokens, pos);
+                result = (char*)malloc(50);
+                if (result) {
+                    sprintf(result, "%.2f", numValue);
+                } else {
+                    result = (char*)malloc(1);
+                    if (result) result[0] = '\0';
+                }
+                return result;
+            }
 
-        (*pos)++;
-        str = getStringVariable(interp, varName);
-        result = (char*)malloc(strlen(str) + 1);
-        if (result) {
-            strcpy(result, str);
+            (*pos)++;
+            str = getStringVariable(interp, varName);
+            result = (char*)malloc(strlen(str) + 1);
+            if (result) {
+                strcpy(result, str);
+            } else {
+                result = (char*)malloc(1);
+                if (result) result[0] = '\0';
+            }
         }
     } else if (tokens[*pos].type == TOK_CHR) {
         (*pos)++;
@@ -420,6 +461,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             if (result) {
                 result[0] = (char)code;
                 result[1] = '\0';
+            } else {
+                result = (char*)malloc(1);
+                if (result) result[0] = '\0';
             }
         }
     } else if (tokens[*pos].type == TOK_MID) {
@@ -447,6 +491,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
                 if (result) {
                     strncpy(result, str + (start - 1), actualLen);
                     result[actualLen] = '\0';
+                } else {
+                    result = (char*)malloc(1);
+                    if (result) result[0] = '\0';
                 }
             }
             free(str);
@@ -467,6 +514,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             if (result) {
                 strncpy(result, str, n);
                 result[n] = '\0';
+            } else {
+                result = (char*)malloc(1);
+                if (result) result[0] = '\0';
             }
             free(str);
         }
@@ -485,6 +535,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             result = (char*)malloc(n + 1);
             if (result) {
                 strcpy(result, str + strLen - n);
+            } else {
+                result = (char*)malloc(1);
+                if (result) result[0] = '\0';
             }
             free(str);
         }
@@ -499,6 +552,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             result = (char*)malloc(50);
             if (result) {
                 sprintf(result, "%.10g", numValue);
+            } else {
+                result = (char*)malloc(1);
+                if (result) result[0] = '\0';
             }
         }
     } else if (tokens[*pos].type == TOK_SPACE) {
@@ -516,6 +572,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
                     result[i] = ' ';
                 }
                 result[n] = '\0';
+            } else {
+                result = (char*)malloc(1);
+                if (result) result[0] = '\0';
             }
         }
     } else if (tokens[*pos].type == TOK_STRING_FUNC) {
@@ -544,6 +603,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
                     result[i] = c;
                 }
                 result[n] = '\0';
+            } else {
+                result = (char*)malloc(1);
+                if (result) result[0] = '\0';
             }
         }
     }

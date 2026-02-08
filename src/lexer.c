@@ -27,6 +27,7 @@ static int isKeyword(const char *word, BasicTokenType *type) {
     if (strcmp(word, "RESTORE") == 0) { *type = TOK_RESTORE; return 1; }
     if (strcmp(word, "SAVE") == 0) { *type = TOK_SAVE; return 1; }
     if (strcmp(word, "LOAD") == 0) { *type = TOK_LOAD; return 1; }
+    if (strcmp(word, "HELP") == 0) { *type = TOK_HELP; return 1; }
     if (strcmp(word, "SIN") == 0) { *type = TOK_SIN; return 1; }
     if (strcmp(word, "COS") == 0) { *type = TOK_COS; return 1; }
     if (strcmp(word, "TAN") == 0) { *type = TOK_TAN; return 1; }

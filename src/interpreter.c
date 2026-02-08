@@ -6,6 +6,10 @@
 
 Interpreter* createInterpreter(void) {
     Interpreter *interp = malloc(sizeof(Interpreter));
+    if (!interp) {
+        fprintf(stderr, "Erreur: Allocation mémoire échouée pour l'interpréteur\n");
+        return NULL;
+    }
     interp->program = NULL;
     interp->variables = NULL;
     interp->currentLine = NULL;
@@ -14,15 +18,62 @@ Interpreter* createInterpreter(void) {
     interp->dataList = NULL;
     interp->dataPointer = NULL;
     interp->hasError = 0;
+    interp->lastErrorType = ERR_NONE;
+    interp->errorColumn = -1;
+    interp->errorContext[0] = '\0';
+    interp->customNumFuncs = NULL;
+    interp->customStrFuncs = NULL;
+    interp->customCommands = NULL;
     return interp;
 }
 
+const char* getErrorTypeName(ErrorType type) {
+    switch (type) {
+        case ERR_SYNTAX:         return "Syntaxe";
+        case ERR_RUNTIME:        return "Exécution";
+        case ERR_TYPE_MISMATCH:  return "Type";
+        case ERR_OUT_OF_DATA:    return "Données";
+        case ERR_DIVISION_ZERO:  return "Division";
+        case ERR_UNDEFINED_VAR:  return "Variable";
+        case ERR_ARRAY_BOUNDS:   return "Tableau";
+        case ERR_OUT_OF_MEMORY:  return "Mémoire";
+        default:                 return "Inconnue";
+    }
+}
+
 void reportError(Interpreter *interp, const char *message) {
+    reportErrorEx(interp, ERR_RUNTIME, -1, message);
+}
+
+void reportErrorEx(Interpreter *interp, ErrorType type, int column, const char *message) {
     interp->hasError = 1;
+    interp->lastErrorType = type;
+    interp->errorColumn = column;
+    
+    /* Affichage formaté de l'erreur */
     if (interp->currentLine) {
-        printf("Erreur à la ligne %d: %s\n", interp->currentLine->lineNum, message);
+        printf("\n[ERREUR %s] Ligne %d", getErrorTypeName(type), interp->currentLine->lineNum);
+        if (column >= 0) {
+            printf(", colonne %d", column);
+        }
+        printf(": %s\n", message);
+        
+        /* Afficher le code de la ligne */
+        if (interp->currentLine->code) {
+            printf("  --> %s\n", interp->currentLine->code);
+            
+            /* Afficher un curseur si la colonne est connue */
+            if (column >= 0) {
+                int i;
+                printf("      ");
+                for (i = 0; i < column; i++) {
+                    printf(" ");
+                }
+                printf("^\n");
+            }
+        }
     } else {
-        printf("Erreur: %s\n", message);
+        printf("\n[ERREUR %s]: %s\n", getErrorTypeName(type), message);
     }
 }
 
@@ -88,6 +139,37 @@ void freeInterpreter(Interpreter *interp) {
         }
     }
     
+    /* Libérer les hooks personnalisés */
+    {
+        CustomNumFunc *numFunc = interp->customNumFuncs;
+        CustomNumFunc *nextNum;
+        CustomStrFunc *strFunc = interp->customStrFuncs;
+        CustomStrFunc *nextStr;
+        CustomCommand *cmd = interp->customCommands;
+        CustomCommand *nextCmd;
+        
+        while (numFunc) {
+            nextNum = numFunc->next;
+            free(numFunc->name);
+            free(numFunc);
+            numFunc = nextNum;
+        }
+        
+        while (strFunc) {
+            nextStr = strFunc->next;
+            free(strFunc->name);
+            free(strFunc);
+            strFunc = nextStr;
+        }
+        
+        while (cmd) {
+            nextCmd = cmd->next;
+            free(cmd->name);
+            free(cmd);
+            cmd = nextCmd;
+        }
+    }
+    
     free(interp);
 }
 
@@ -96,8 +178,13 @@ void addLine(Interpreter *interp, int lineNum, const char *code) {
     Line *current;
     
     newLine = malloc(sizeof(Line));
+    if (!newLine) return;
     newLine->lineNum = lineNum;
     newLine->code = malloc(strlen(code) + 1);
+    if (!newLine->code) {
+        free(newLine);
+        return;
+    }
     strcpy(newLine->code, code);
     newLine->next = NULL;
     
@@ -199,6 +286,9 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
     else if (tokens[0].type == TOK_RESTORE) {
         handleRestore(interp, tokens);
     }
+    else if (tokens[0].type == TOK_HELP) {
+        handleHelp(interp, tokens);
+    }
     else if (tokens[0].type == TOK_FOR) {
         /* FOR ne s'exécute que dans runProgram */
         printf("Erreur: FOR ne peut être utilisé qu'à l'intérieur d'un programme.\n");
@@ -217,11 +307,26 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
         printf("Erreur: %s ne peut être utilisé qu'à l'intérieur d'un programme.\n", tokens[0].value);
     }
     else {
-        printf("Erreur: Commande non reconnue '%s'.\n", 
-               tokens[0].value ? tokens[0].value : "");
+        /* Vérifier si c'est une commande personnalisée */
+        CustomCommandHandler customCmd = findCustomCommand(interp, tokens[0].value);
+        if (customCmd) {
+            customCmd(interp, tokens);
+        } else {
+            printf("Erreur: Commande non reconnue '%s'.\n", 
+                   tokens[0].value ? tokens[0].value : "");
+        }
     }
     
     freeTokens(tokens);
+}
+
+/* Libère le tableau de chaînes */
+static void freeSplitArray(char **parts, int count) {
+    int i;
+    for (i = 0; i < count; i++) {
+        free(parts[i]);
+    }
+    free(parts);
 }
 
 /* Divise une ligne par ':' mais ignore les ':' après REM et dans les chaînes */
@@ -237,8 +342,13 @@ static char** splitByColon(const char *line, int *count) {
     *count = 0;
     capacity = 10;
     parts = malloc(sizeof(char*) * capacity);
+    if (!parts) return NULL;
     
     lineCopy = malloc(strlen(line) + 1);
+    if (!lineCopy) {
+        free(parts);
+        return NULL;
+    }
     strcpy(lineCopy, line);
     
     start = lineCopy;
@@ -265,10 +375,22 @@ static char** splitByColon(const char *line, int *count) {
             /* Trouver un ':' hors REM et hors chaîne */
             *p = '\0';
             if (*count >= capacity) {
+                char **newParts;
                 capacity *= 2;
-                parts = realloc(parts, sizeof(char*) * capacity);
+                newParts = realloc(parts, sizeof(char*) * capacity);
+                if (!newParts) {
+                    free(lineCopy);
+                    freeSplitArray(parts, *count);
+                    return NULL;
+                }
+                parts = newParts;
             }
             parts[*count] = malloc(strlen(start) + 1);
+            if (!parts[*count]) {
+                free(lineCopy);
+                freeSplitArray(parts, *count);
+                return NULL;
+            }
             strcpy(parts[*count], start);
             (*count)++;
             p++;
@@ -286,24 +408,27 @@ static char** splitByColon(const char *line, int *count) {
     
     /* Ajouter la dernière partie */
     if (*count >= capacity) {
+        char **newParts;
         capacity++;
-        parts = realloc(parts, sizeof(char*) * capacity);
+        newParts = realloc(parts, sizeof(char*) * capacity);
+        if (!newParts) {
+            free(lineCopy);
+            freeSplitArray(parts, *count);
+            return NULL;
+        }
+        parts = newParts;
     }
     parts[*count] = malloc(strlen(start) + 1);
+    if (!parts[*count]) {
+        free(lineCopy);
+        freeSplitArray(parts, *count);
+        return NULL;
+    }
     strcpy(parts[*count], start);
     (*count)++;
     
     free(lineCopy);
     return parts;
-}
-
-/* Libère le tableau de chaînes */
-static void freeSplitArray(char **parts, int count) {
-    int i;
-    for (i = 0; i < count; i++) {
-        free(parts[i]);
-    }
-    free(parts);
 }
 
 /* Exécuter une ligne de commande (peut contenir plusieurs instructions séparées par ':') */
@@ -330,10 +455,8 @@ void executeCommand(Interpreter *interp, const char *line) {
 /* Exécute une instruction dans le contexte de runProgram (gestion des structures de contrôle) */
 static int executeStatementInProgram(Interpreter *interp, const char *stmt, Line **line) {
     Token *tokens;
-    int controlFlowHandled;
     
     tokens = tokenize(stmt);
-    controlFlowHandled = 0;
     
     if (tokens[0].type == TOK_DATA) {
         /* DATA a déjà été traité dans la première passe, ignorer ici */
@@ -555,4 +678,185 @@ int loadProgram(Interpreter *interp, const char *filename) {
     
     fclose(file);
     return 1;
+}
+
+/* ========================================================================
+ * FONCTIONS POUR LE SYSTEME DE HOOKS/CALLBACKS
+ * ======================================================================== */
+
+int registerCustomNumericFunction(Interpreter *interp, const char *name, CustomNumericFunction handler) {
+    CustomNumFunc *newFunc;
+    char *nameCopy;
+    size_t i;
+    
+    if (!interp || !name || !handler) return 0;
+    
+    /* Allouer la structure */
+    newFunc = (CustomNumFunc*)malloc(sizeof(CustomNumFunc));
+    if (!newFunc) return 0;
+    
+    /* Copier le nom en majuscules */
+    nameCopy = (char*)malloc(strlen(name) + 1);
+    if (!nameCopy) {
+        free(newFunc);
+        return 0;
+    }
+    
+    strcpy(nameCopy, name);
+    for (i = 0; i < strlen(nameCopy); i++) {
+        nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
+    }
+    
+    /* Initialiser la structure */
+    newFunc->name = nameCopy;
+    newFunc->handler = handler;
+    newFunc->next = interp->customNumFuncs;
+    
+    /* Ajouter en tete de liste */
+    interp->customNumFuncs = newFunc;
+    
+    return 1;
+}
+
+int registerCustomStringFunction(Interpreter *interp, const char *name, CustomStringFunction handler) {
+    CustomStrFunc *newFunc;
+    char *nameCopy;
+    size_t i;
+    
+    if (!interp || !name || !handler) return 0;
+    
+    /* Allouer la structure */
+    newFunc = (CustomStrFunc*)malloc(sizeof(CustomStrFunc));
+    if (!newFunc) return 0;
+    
+    /* Copier le nom en majuscules */
+    nameCopy = (char*)malloc(strlen(name) + 1);
+    if (!nameCopy) {
+        free(newFunc);
+        return 0;
+    }
+    
+    strcpy(nameCopy, name);
+    for (i = 0; i < strlen(nameCopy); i++) {
+        nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
+    }
+    
+    /* Initialiser la structure */
+    newFunc->name = nameCopy;
+    newFunc->handler = handler;
+    newFunc->next = interp->customStrFuncs;
+    
+    /* Ajouter en tete de liste */
+    interp->customStrFuncs = newFunc;
+    
+    return 1;
+}
+
+int registerCustomCommand(Interpreter *interp, const char *name, CustomCommandHandler handler) {
+    CustomCommand *newCmd;
+    char *nameCopy;
+    size_t i;
+    
+    if (!interp || !name || !handler) return 0;
+    
+    /* Allouer la structure */
+    newCmd = (CustomCommand*)malloc(sizeof(CustomCommand));
+    if (!newCmd) return 0;
+    
+    /* Copier le nom en majuscules */
+    nameCopy = (char*)malloc(strlen(name) + 1);
+    if (!nameCopy) {
+        free(newCmd);
+        return 0;
+    }
+    
+    strcpy(nameCopy, name);
+    for (i = 0; i < strlen(nameCopy); i++) {
+        nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
+    }
+    
+    /* Initialiser la structure */
+    newCmd->name = nameCopy;
+    newCmd->handler = handler;
+    newCmd->next = interp->customCommands;
+    
+    /* Ajouter en tete de liste */
+    interp->customCommands = newCmd;
+    
+    return 1;
+}
+
+CustomNumericFunction findCustomNumericFunction(Interpreter *interp, const char *name) {
+    CustomNumFunc *current;
+    char upperName[256];
+    size_t i;
+    
+    if (!interp || !name) return NULL;
+    
+    /* Convertir le nom en majuscules pour la comparaison */
+    for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
+        upperName[i] = (char)toupper((unsigned char)name[i]);
+    }
+    upperName[i] = '\0';
+    
+    /* Parcourir la liste */
+    current = interp->customNumFuncs;
+    while (current) {
+        if (strcmp(current->name, upperName) == 0) {
+            return current->handler;
+        }
+        current = current->next;
+    }
+    
+    return NULL;
+}
+
+CustomStringFunction findCustomStringFunction(Interpreter *interp, const char *name) {
+    CustomStrFunc *current;
+    char upperName[256];
+    size_t i;
+    
+    if (!interp || !name) return NULL;
+    
+    /* Convertir le nom en majuscules pour la comparaison */
+    for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
+        upperName[i] = (char)toupper((unsigned char)name[i]);
+    }
+    upperName[i] = '\0';
+    
+    /* Parcourir la liste */
+    current = interp->customStrFuncs;
+    while (current) {
+        if (strcmp(current->name, upperName) == 0) {
+            return current->handler;
+        }
+        current = current->next;
+    }
+    
+    return NULL;
+}
+
+CustomCommandHandler findCustomCommand(Interpreter *interp, const char *name) {
+    CustomCommand *current;
+    char upperName[256];
+    size_t i;
+    
+    if (!interp || !name) return NULL;
+    
+    /* Convertir le nom en majuscules pour la comparaison */
+    for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
+        upperName[i] = (char)toupper((unsigned char)name[i]);
+    }
+    upperName[i] = '\0';
+    
+    /* Parcourir la liste */
+    current = interp->customCommands;
+    while (current) {
+        if (strcmp(current->name, upperName) == 0) {
+            return current->handler;
+        }
+        current = current->next;
+    }
+    
+    return NULL;
 }

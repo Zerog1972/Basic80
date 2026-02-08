@@ -1,0 +1,6 @@
+10 LET A = 10
+20 LET B = 0
+30 LET C = A / B
+40 PRINT C
+RUN
+EXIT

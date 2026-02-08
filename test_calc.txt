@@ -1,0 +1,11 @@
+PRINT TRIM$("  hello  ")
+PRINT TRIM$("test")  
+LET A$ = "World"
+LET B$ = "BASIC"
+PRINT REPLACE$("Hello World", A$, B$)
+LET X = 3.7
+PRINT "CEIL(3.7) ="; CEIL(X)
+PRINT "FLOOR(3.7) ="; FLOOR(X)
+PRINT "ROUND(3.7) ="; ROUND(X)
+FUNCS
+VERSION
