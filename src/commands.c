@@ -3,6 +3,12 @@
 #include "variables.h"
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+
+/* Constantes de sécurité */
+#define MAX_VARNAME_LEN 256
+#define MAX_INPUT_BUFFER 1024
+#define MAX_ARRAY_DIMENSIONS 10
 
 /* Helper pour vérifier le suffixe $ */
 static int isStringVariable(const char *name) {
@@ -20,6 +26,10 @@ void handlePrint(Interpreter *interp, Token *tokens) {
     while (tokens[pos].type != TOK_EOF) {
         if (isStringExpression(interp, tokens, pos)) {
             char *strResult = evaluateStringExpression(interp, tokens, &pos);
+            if (!strResult) {
+                reportErrorEx(interp, ERR_OUT_OF_MEMORY, pos, "Mémoire insuffisante pour l'évaluation de chaîne.");
+                return;
+            }
             printf("%s", strResult);
             free(strResult);
         } else {
@@ -42,7 +52,7 @@ void handlePrint(Interpreter *interp, Token *tokens) {
 void handleLet(Interpreter *interp, Token *tokens) {
     int pos;
     double val;
-    char varName[256];
+    char varName[MAX_VARNAME_LEN];
     
     /* Détecter si on a LET ou une affectation directe */
     pos = (tokens[0].type == TOK_LET) ? 1 : 0;
@@ -52,18 +62,19 @@ void handleLet(Interpreter *interp, Token *tokens) {
         return;
     }
     
-    strcpy(varName, tokens[pos].value);
+    strncpy(varName, tokens[pos].value, MAX_VARNAME_LEN - 1);
+    varName[MAX_VARNAME_LEN - 1] = '\0';
     pos++;
     
     /* Vérifier si c'est une affectation de tableau */
     if (tokens[pos].type == TOK_LPAREN) {
-        int indices[10]; /* Maximum 10 dimensions */
+        int indices[MAX_ARRAY_DIMENSIONS];
         int numIndices;
         
         pos++;
         numIndices = 0;
         /* Lire tous les indices séparés par des virgules */
-        while (numIndices < 10) {
+        while (numIndices < MAX_ARRAY_DIMENSIONS) {
             indices[numIndices] = (int)evaluateExpression(interp, tokens, &pos);
             numIndices++;
             if (tokens[pos].type == TOK_COMMA) {
@@ -71,8 +82,11 @@ void handleLet(Interpreter *interp, Token *tokens) {
             } else {
                 break; /* Fin des indices */
             }
-        }
-        if (tokens[pos].type != TOK_RPAREN) {
+        }        /* Vérifier si on a dépassé le nombre maximum de dimensions */
+        if (numIndices >= MAX_ARRAY_DIMENSIONS && tokens[pos].type == TOK_COMMA) {
+            reportErrorEx(interp, ERR_SYNTAX, pos, "Trop de dimensions (maximum 10).");
+            return;
+        }        if (tokens[pos].type != TOK_RPAREN) {
             reportErrorEx(interp, ERR_SYNTAX, pos, "')' attendu après les indices du tableau.");
             return;
         }
@@ -89,6 +103,10 @@ void handleLet(Interpreter *interp, Token *tokens) {
         
         if (isStringVariable(varName)) {
             char *strResult = evaluateStringExpression(interp, tokens, &pos);
+            if (!strResult) {
+                reportErrorEx(interp, ERR_OUT_OF_MEMORY, pos, "Mémoire insuffisante pour l'évaluation de chaîne.");
+                return;
+            }
             setStringVariable(interp, varName, strResult);
             free(strResult);
         } else {
@@ -108,20 +126,27 @@ void handleLet(Interpreter *interp, Token *tokens) {
 
 void handleDim(Interpreter *interp, Token *tokens) {
     int pos;
-    char varName[256];
-    int dims[10]; /* Maximum 10 dimensions */
+    char varName[MAX_VARNAME_LEN];
+    int dims[MAX_ARRAY_DIMENSIONS];
     int numDims;
     
     pos = 1;
     if (tokens[pos].type == TOK_IDENTIFIER) {
-        strcpy(varName, tokens[pos].value);
+        strncpy(varName, tokens[pos].value, MAX_VARNAME_LEN - 1);
+        varName[MAX_VARNAME_LEN - 1] = '\0';
         pos++;
         if (tokens[pos].type == TOK_LPAREN) {
             pos++;
             numDims = 0;
             /* Lire toutes les dimensions séparées par des virgules */
-            while (numDims < 10) {
-                dims[numDims] = (int)evaluateExpression(interp, tokens, &pos) + 1; /* +1 car BASIC commence à 0 */
+            while (numDims < MAX_ARRAY_DIMENSIONS) {
+                int dimValue = (int)evaluateExpression(interp, tokens, &pos);
+                /* Valider que la dimension est positive */
+                if (dimValue < 0) {
+                    reportErrorEx(interp, ERR_SYNTAX, pos, "Dimension de tableau négative.");
+                    return;
+                }
+                dims[numDims] = dimValue + 1; /* +1 car BASIC commence à 0 */
                 numDims++;
                 if (tokens[pos].type == TOK_COMMA) {
                     pos++; /* Passer la virgule */
@@ -129,7 +154,16 @@ void handleDim(Interpreter *interp, Token *tokens) {
                     break; /* Fin des dimensions */
                 }
             }
-            if (tokens[pos].type == TOK_RPAREN) pos++;
+            /* Vérifier si on a dépassé le nombre maximum de dimensions */
+            if (numDims >= MAX_ARRAY_DIMENSIONS && tokens[pos].type == TOK_COMMA) {
+                reportErrorEx(interp, ERR_SYNTAX, pos, "Trop de dimensions (maximum 10).");
+                return;
+            }
+            if (tokens[pos].type != TOK_RPAREN) {
+                reportErrorEx(interp, ERR_SYNTAX, pos, "')' attendu après les dimensions du tableau.");
+                return;
+            }
+            pos++;
             createArray(interp, varName, dims, numDims);
         }
     }
@@ -139,37 +173,57 @@ void handleDim(Interpreter *interp, Token *tokens) {
 
 void handleInput(Interpreter *interp, Token *tokens) {
     int pos;
-    char varName[256];
-    char buffer[1024];
+    char varName[MAX_VARNAME_LEN];
+    char buffer[MAX_INPUT_BUFFER];
     
     pos = 1;
-    if (tokens[pos].type == TOK_IDENTIFIER) {
-        strcpy(varName, tokens[pos].value);
-        
-        printf("? ");
-        if (isStringVariable(varName)) {
-            if (fgets(buffer, sizeof(buffer), stdin)) {
-                buffer[strcspn(buffer, "\n")] = 0;
-                setStringVariable(interp, varName, buffer);
-            }
+    if (tokens[pos].type != TOK_IDENTIFIER) {
+        reportErrorEx(interp, ERR_SYNTAX, pos, "Nom de variable attendu après INPUT.");
+        return;
+    }
+    
+    strncpy(varName, tokens[pos].value, MAX_VARNAME_LEN - 1);
+    varName[MAX_VARNAME_LEN - 1] = '\0';
+    
+    printf("? ");
+    if (isStringVariable(varName)) {
+        if (fgets(buffer, sizeof(buffer), stdin)) {
+            buffer[strcspn(buffer, "\n")] = 0;
+            setStringVariable(interp, varName, buffer);
+        }
+    } else {
+        double val;
+        if (scanf("%lf", &val) == 1) {
+            /* Consommer le reste de la ligne */
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF);
+            setVariable(interp, varName, val);
         } else {
-            double val;
-            if (scanf("%lf", &val) == 1) {
-                /* Consommer le reste de la ligne */
-                int c;
-                while ((c = getchar()) != '\n' && c != EOF);
-                setVariable(interp, varName, val);
-            }
+            /* Erreur de lecture : nettoyer le buffer */
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF);
+            reportErrorEx(interp, ERR_SYNTAX, pos, "Entrée numérique invalide.");
         }
     }
 }
+
 /* ===== COMMANDES DATA/READ/RESTORE ===== */
 
+/**
+ * Traite la commande DATA.
+ * 
+ * Stocke des valeurs constantes dans une liste chaînée pour lecture ultérieure
+ * par READ. Les données peuvent être numériques ou des chaînes.
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens contenant les valeurs DATA
+ * @param lineNum Numéro de ligne pour RESTORE
+ */
 void handleData(Interpreter *interp, Token *tokens, int lineNum) {
     int pos;
     DataItem *newItem;
     DataItem *last;
-    char buffer[1024];
+    char buffer[MAX_INPUT_BUFFER];
     
     pos = 1; /* Sauter le token DATA */
     
@@ -240,9 +294,18 @@ void handleData(Interpreter *interp, Token *tokens, int lineNum) {
     }
 }
 
+/**
+ * Traite la commande READ.
+ * 
+ * Lit séquentiellement les valeurs depuis les instructions DATA et les
+ * assigne aux variables spécifiées.
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens contenant les noms de variables
+ */
 void handleRead(Interpreter *interp, Token *tokens) {
     int pos;
-    char varName[256];
+    char varName[MAX_VARNAME_LEN];
     
     pos = 1; /* Sauter le token READ */
     
@@ -258,7 +321,8 @@ void handleRead(Interpreter *interp, Token *tokens) {
             return;
         }
         
-        strcpy(varName, tokens[pos].value);
+        strncpy(varName, tokens[pos].value, MAX_VARNAME_LEN - 1);
+        varName[MAX_VARNAME_LEN - 1] = '\0';
         
         /* Vérifier s'il y a des données disponibles */
         if (!interp->dataPointer) {
@@ -283,6 +347,16 @@ void handleRead(Interpreter *interp, Token *tokens) {
     }
 }
 
+/**
+ * Traite la commande RESTORE.
+ * 
+ * Réinitialise le pointeur de lecture DATA. Sans argument, revient au début
+ * de toutes les DATA. Avec un numéro de ligne, positionne au premier DATA
+ * de cette ligne.
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens (peut contenir un numéro de ligne optionnel)
+ */
 void handleRestore(Interpreter *interp, Token *tokens) {
     int targetLine;
     DataItem *item;
@@ -317,7 +391,7 @@ void handleRestore(Interpreter *interp, Token *tokens) {
 /* ===== COMMANDE HELP ===== */
 
 void handleHelp(Interpreter *interp, Token *tokens) {
-    char cmdName[256];
+    char cmdName[MAX_VARNAME_LEN];
     int i;
     
     /* Si HELP sans argument, afficher la liste des commandes */
@@ -361,7 +435,8 @@ void handleHelp(Interpreter *interp, Token *tokens) {
     /* Si HELP avec un argument, afficher l'aide detaillee */
     /* Accepter n'importe quel token qui a une valeur (pas seulement TOK_IDENTIFIER) */
     if (tokens[1].type != TOK_EOF && tokens[1].value) {
-        strcpy(cmdName, tokens[1].value);
+        strncpy(cmdName, tokens[1].value, MAX_VARNAME_LEN - 1);
+        cmdName[MAX_VARNAME_LEN - 1] = '\0';
         
         /* Convertir en majuscules pour comparaison */
         for (i = 0; cmdName[i]; i++) {
