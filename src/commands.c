@@ -10,7 +10,14 @@
 #define MAX_INPUT_BUFFER 1024
 #define MAX_ARRAY_DIMENSIONS 10
 
-/* Helper pour vérifier le suffixe $ */
+/**
+ * Vérifie si un nom de variable est une variable chaîne.
+ * 
+ * En BASIC, les variables chaînes se terminent par le suffixe '$'.
+ * 
+ * @param name Nom de la variable à vérifier
+ * @return 1 si c'est une variable chaîne, 0 sinon
+ */
 static int isStringVariable(const char *name) {
     size_t len = strlen(name);
     return len > 0 && name[len - 1] == '$';
@@ -18,6 +25,20 @@ static int isStringVariable(const char *name) {
 
 /* ===== COMMANDE PRINT ===== */
 
+/**
+ * Traite la commande PRINT.
+ * 
+ * Affiche une ou plusieurs expressions à l'écran. Supporte les expressions
+ * numériques et les chaînes de caractères. Les séparateurs virgule et point-virgule
+ * contrôlent l'espacement entre les éléments.
+ * 
+ * Syntaxe: PRINT [expression [,|; expression]...]
+ * - virgule: ajoute un espace entre les éléments
+ * - point-virgule: pas d'espace entre les éléments
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens contenant les expressions à afficher
+ */
 void handlePrint(Interpreter *interp, Token *tokens) {
     int pos;
     double val;
@@ -49,6 +70,20 @@ void handlePrint(Interpreter *interp, Token *tokens) {
 
 /* ===== COMMANDE LET ===== */
 
+/**
+ * Traite la commande LET (affectation de variable).
+ * 
+ * Assigne une valeur à une variable simple ou à un élément de tableau.
+ * Le mot-clé LET est optionnel en BASIC. Supporte les variables numériques
+ * et les variables chaînes (terminées par $).
+ * 
+ * Syntaxes:
+ * - [LET] variable = expression
+ * - [LET] array(indices) = expression
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens contenant l'affectation
+ */
 void handleLet(Interpreter *interp, Token *tokens) {
     int pos;
     double val;
@@ -124,6 +159,18 @@ void handleLet(Interpreter *interp, Token *tokens) {
 
 /* ===== COMMANDE DIM ===== */
 
+/**
+ * Traite la commande DIM (déclaration de tableau).
+ * 
+ * Déclare un tableau multi-dimensionnel avec les tailles spécifiées.
+ * Supporte jusqu'à 10 dimensions. Les indices commencent à 0 en BASIC,
+ * donc DIM A(10) crée un tableau de 11 éléments (0 à 10).
+ * 
+ * Syntaxe: DIM array(taille1 [, taille2, ...])
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens contenant la déclaration du tableau
+ */
 void handleDim(Interpreter *interp, Token *tokens) {
     int pos;
     char varName[MAX_VARNAME_LEN];
@@ -171,6 +218,18 @@ void handleDim(Interpreter *interp, Token *tokens) {
 
 /* ===== COMMANDE INPUT ===== */
 
+/**
+ * Traite la commande INPUT.
+ * 
+ * Demande à l'utilisateur de saisir une valeur au clavier et l'assigne
+ * à la variable spécifiée. Pour les variables chaînes (terminées par $),
+ * lit une ligne de texte. Pour les variables numériques, lit un nombre.
+ * 
+ * Syntaxe: INPUT variable
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens contenant le nom de la variable
+ */
 void handleInput(Interpreter *interp, Token *tokens) {
     int pos;
     char varName[MAX_VARNAME_LEN];
@@ -390,6 +449,18 @@ void handleRestore(Interpreter *interp, Token *tokens) {
 
 /* ===== COMMANDE HELP ===== */
 
+/**
+ * Traite la commande HELP.
+ * 
+ * Affiche l'aide du système BASIC80. Sans argument, affiche la liste
+ * complète des commandes disponibles. Avec un nom de commande en argument,
+ * affiche l'aide détaillée de cette commande spécifique.
+ * 
+ * Syntaxe: HELP [commande]
+ * 
+ * @param interp Pointeur vers l'interpréteur
+ * @param tokens Tableau de tokens (peut contenir un nom de commande optionnel)
+ */
 void handleHelp(Interpreter *interp, Token *tokens) {
     char cmdName[MAX_VARNAME_LEN];
     int i;
@@ -418,6 +489,23 @@ void handleHelp(Interpreter *interp, Token *tokens) {
         printf("  READ     - Lire des donnees\n");
         printf("  RESTORE  - Reinitialiser le pointeur DATA\n\n");
         
+        printf("Fonctions mathematiques:\n");
+        printf("  ABS      - Valeur absolue\n");
+        printf("  SQR      - Racine carree\n");
+        printf("  INT      - Partie entiere\n");
+        printf("  SGN      - Signe d'un nombre\n");
+        printf("  RND      - Nombre aleatoire\n");
+        printf("  SIN/COS/TAN/ATN - Fonctions trigonometriques\n");
+        printf("  EXP/LOG/LOG10   - Exponentielle et logarithmes\n\n");
+        
+        printf("Fonctions de chaines:\n");
+        printf("  LEN      - Longueur d'une chaine\n");
+        printf("  LEFT$/RIGHT$/MID$ - Extraction de sous-chaines\n");
+        printf("  CHR$     - Caractere ASCII\n");
+        printf("  ASC      - Code ASCII d'un caractere\n");
+        printf("  STR$     - Convertir nombre en chaine\n");
+        printf("  VAL      - Convertir chaine en nombre\n\n");
+        
         printf("Commandes systeme:\n");
         printf("  LIST     - Afficher le programme\n");
         printf("  RUN      - Executer le programme\n");
@@ -427,8 +515,8 @@ void handleHelp(Interpreter *interp, Token *tokens) {
         printf("  EXIT     - Quitter l'interpreteur\n");
         printf("  HELP     - Afficher cette aide\n\n");
         
-        printf("Tapez HELP [COMMANDE] pour plus de details.\n");
-        printf("Exemple: HELP PRINT\n\n");
+        printf("Tapez HELP [COMMANDE] ou HELP [FONCTION] pour plus de details.\n");
+        printf("Exemples: HELP PRINT, HELP SIN, HELP LEN\n\n");
         return;
     }
     
@@ -666,9 +754,247 @@ void handleHelp(Interpreter *interp, Token *tokens) {
             printf("=== TO / STEP ===\n\n");
             printf("Voir HELP FOR pour l'utilisation de TO et STEP dans les boucles.\n\n");
         }
+        /* ===== FONCTIONS MATHEMATIQUES ===== */
+        else if (strcmp(cmdName, "ABS") == 0) {
+            printf("=== ABS ===\n\n");
+            printf("Syntaxe: ABS(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne la valeur absolue d'un nombre.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT ABS(-5)       -> Affiche: 5.00\n");
+            printf("  PRINT ABS(3.14)     -> Affiche: 3.14\n");
+            printf("  X = ABS(A - B)      -> Distance entre A et B\n\n");
+        }
+        else if (strcmp(cmdName, "SQR") == 0) {
+            printf("=== SQR ===\n\n");
+            printf("Syntaxe: SQR(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne la racine carree d'un nombre.\n");
+            printf("  Le nombre doit etre positif ou nul.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT SQR(16)       -> Affiche: 4.00\n");
+            printf("  PRINT SQR(2)        -> Affiche: 1.41\n");
+            printf("  H = SQR(A*A + B*B)  -> Hypothenuse (Pythagore)\n\n");
+        }
+        else if (strcmp(cmdName, "INT") == 0) {
+            printf("=== INT ===\n\n");
+            printf("Syntaxe: INT(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne la partie entiere d'un nombre (arrondi vers le bas).\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT INT(3.7)      -> Affiche: 3.00\n");
+            printf("  PRINT INT(-2.3)     -> Affiche: -3.00\n");
+            printf("  N = INT(X / 10)     -> Dizaines de X\n\n");
+        }
+        else if (strcmp(cmdName, "SGN") == 0) {
+            printf("=== SGN ===\n\n");
+            printf("Syntaxe: SGN(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le signe d'un nombre:\n");
+            printf("    -1 si negatif\n");
+            printf("     0 si nul\n");
+            printf("    +1 si positif\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT SGN(-5)       -> Affiche: -1.00\n");
+            printf("  PRINT SGN(0)        -> Affiche: 0.00\n");
+            printf("  PRINT SGN(42)       -> Affiche: 1.00\n\n");
+        }
+        else if (strcmp(cmdName, "RND") == 0) {
+            printf("=== RND ===\n\n");
+            printf("Syntaxe: RND\n\n");
+            printf("Description:\n");
+            printf("  Retourne un nombre aleatoire entre 0 (inclus) et 1 (exclus).\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT RND           -> Affiche: 0.73 (exemple)\n");
+            printf("  X = INT(RND * 6) + 1 -> Lance un de (1 a 6)\n");
+            printf("  Y = RND * 100       -> Nombre entre 0 et 100\n\n");
+        }
+        else if (strcmp(cmdName, "SIN") == 0) {
+            printf("=== SIN ===\n\n");
+            printf("Syntaxe: SIN(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le sinus d'un angle en radians.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT SIN(0)        -> Affiche: 0.00\n");
+            printf("  PRINT SIN(3.14159/2) -> Affiche: 1.00\n");
+            printf("  Y = SIN(A * 3.14159 / 180) -> Convertir degres en radians\n\n");
+        }
+        else if (strcmp(cmdName, "COS") == 0) {
+            printf("=== COS ===\n\n");
+            printf("Syntaxe: COS(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le cosinus d'un angle en radians.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT COS(0)        -> Affiche: 1.00\n");
+            printf("  PRINT COS(3.14159)  -> Affiche: -1.00\n");
+            printf("  X = COS(A * 3.14159 / 180) -> Convertir degres en radians\n\n");
+        }
+        else if (strcmp(cmdName, "TAN") == 0) {
+            printf("=== TAN ===\n\n");
+            printf("Syntaxe: TAN(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne la tangente d'un angle en radians.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT TAN(0)        -> Affiche: 0.00\n");
+            printf("  PRINT TAN(3.14159/4) -> Affiche: 1.00\n\n");
+        }
+        else if (strcmp(cmdName, "ATN") == 0) {
+            printf("=== ATN ===\n\n");
+            printf("Syntaxe: ATN(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne l'arc tangente (en radians) d'un nombre.\n");
+            printf("  Resultat entre -PI/2 et PI/2.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT ATN(1)        -> Affiche: 0.79 (PI/4)\n");
+            printf("  A = ATN(Y/X) * 180 / 3.14159 -> Angle en degres\n\n");
+        }
+        else if (strcmp(cmdName, "EXP") == 0) {
+            printf("=== EXP ===\n\n");
+            printf("Syntaxe: EXP(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne e^x (exponentielle de x).\n");
+            printf("  e est la base des logarithmes naturels (environ 2.718).\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT EXP(0)        -> Affiche: 1.00\n");
+            printf("  PRINT EXP(1)        -> Affiche: 2.72\n");
+            printf("  Y = EXP(X)          -> Croissance exponentielle\n\n");
+        }
+        else if (strcmp(cmdName, "LOG") == 0) {
+            printf("=== LOG ===\n\n");
+            printf("Syntaxe: LOG(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le logarithme naturel (base e) d'un nombre.\n");
+            printf("  Le nombre doit etre strictement positif.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT LOG(2.718)    -> Affiche: 1.00\n");
+            printf("  PRINT LOG(1)        -> Affiche: 0.00\n");
+            printf("  Y = LOG(X)          -> Fonction inverse de EXP\n\n");
+        }
+        else if (strcmp(cmdName, "LOG10") == 0) {
+            printf("=== LOG10 ===\n\n");
+            printf("Syntaxe: LOG10(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le logarithme decimal (base 10) d'un nombre.\n");
+            printf("  Le nombre doit etre strictement positif.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT LOG10(100)    -> Affiche: 2.00\n");
+            printf("  PRINT LOG10(1000)   -> Affiche: 3.00\n");
+            printf("  D = LOG10(X)        -> Nombre de chiffres - 1\n\n");
+        }
+        else if (strcmp(cmdName, "SINH") == 0) {
+            printf("=== SINH ===\n\n");
+            printf("Syntaxe: SINH(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le sinus hyperbolique d'un nombre.\n\n");
+            printf("Exemple:\n");
+            printf("  PRINT SINH(0)       -> Affiche: 0.00\n\n");
+        }
+        else if (strcmp(cmdName, "COSH") == 0) {
+            printf("=== COSH ===\n\n");
+            printf("Syntaxe: COSH(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le cosinus hyperbolique d'un nombre.\n\n");
+            printf("Exemple:\n");
+            printf("  PRINT COSH(0)       -> Affiche: 1.00\n\n");
+        }
+        else if (strcmp(cmdName, "TANH") == 0) {
+            printf("=== TANH ===\n\n");
+            printf("Syntaxe: TANH(expression)\n\n");
+            printf("Description:\n");
+            printf("  Retourne la tangente hyperbolique d'un nombre.\n\n");
+            printf("Exemple:\n");
+            printf("  PRINT TANH(0)       -> Affiche: 0.00\n\n");
+        }
+        /* ===== FONCTIONS DE CHAINES ===== */
+        else if (strcmp(cmdName, "LEN") == 0) {
+            printf("=== LEN ===\n\n");
+            printf("Syntaxe: LEN(chaine$)\n\n");
+            printf("Description:\n");
+            printf("  Retourne la longueur (nombre de caracteres) d'une chaine.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT LEN(\"Hello\")  -> Affiche: 5.00\n");
+            printf("  A$ = \"Test\"\n");
+            printf("  PRINT LEN(A$)       -> Affiche: 4.00\n");
+            printf("  IF LEN(X$) > 10 THEN PRINT \"Trop long\"\n\n");
+        }
+        else if (strcmp(cmdName, "LEFT$") == 0 || strcmp(cmdName, "LEFT") == 0) {
+            printf("=== LEFT$ ===\n\n");
+            printf("Syntaxe: LEFT$(chaine$, n)\n\n");
+            printf("Description:\n");
+            printf("  Retourne les n premiers caracteres d'une chaine.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT LEFT$(\"Hello\", 3)   -> Affiche: Hel\n");
+            printf("  A$ = \"Bonjour\"\n");
+            printf("  B$ = LEFT$(A$, 3)         -> B$ = \"Bon\"\n");
+            printf("  IF LEFT$(X$, 1) = \"A\" THEN PRINT \"Commence par A\"\n\n");
+        }
+        else if (strcmp(cmdName, "RIGHT$") == 0 || strcmp(cmdName, "RIGHT") == 0) {
+            printf("=== RIGHT$ ===\n\n");
+            printf("Syntaxe: RIGHT$(chaine$, n)\n\n");
+            printf("Description:\n");
+            printf("  Retourne les n derniers caracteres d'une chaine.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT RIGHT$(\"Hello\", 2)  -> Affiche: lo\n");
+            printf("  A$ = \"Bonjour\"\n");
+            printf("  B$ = RIGHT$(A$, 4)        -> B$ = \"jour\"\n");
+            printf("  X$ = RIGHT$(\"00\" + STR$(N), 2) -> Format 2 chiffres\n\n");
+        }
+        else if (strcmp(cmdName, "MID$") == 0 || strcmp(cmdName, "MID") == 0) {
+            printf("=== MID$ ===\n\n");
+            printf("Syntaxe: MID$(chaine$, debut, longueur)\n\n");
+            printf("Description:\n");
+            printf("  Extrait une sous-chaine a partir d'une position donnee.\n");
+            printf("  Les positions commencent a 1.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT MID$(\"Hello\", 2, 3) -> Affiche: ell\n");
+            printf("  A$ = \"Bonjour\"\n");
+            printf("  B$ = MID$(A$, 4, 2)       -> B$ = \"jo\"\n\n");
+        }
+        else if (strcmp(cmdName, "CHR$") == 0 || strcmp(cmdName, "CHR") == 0) {
+            printf("=== CHR$ ===\n\n");
+            printf("Syntaxe: CHR$(code)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le caractere correspondant au code ASCII.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT CHR$(65)      -> Affiche: A\n");
+            printf("  PRINT CHR$(72); CHR$(105) -> Affiche: Hi\n");
+            printf("  A$ = CHR$(13)       -> Retour chariot\n\n");
+        }
+        else if (strcmp(cmdName, "ASC") == 0) {
+            printf("=== ASC ===\n\n");
+            printf("Syntaxe: ASC(chaine$)\n\n");
+            printf("Description:\n");
+            printf("  Retourne le code ASCII du premier caractere d'une chaine.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT ASC(\"A\")      -> Affiche: 65.00\n");
+            printf("  PRINT ASC(\"Hello\")  -> Affiche: 72.00 (H)\n");
+            printf("  C = ASC(A$)         -> Code du premier caractere\n\n");
+        }
+        else if (strcmp(cmdName, "STR$") == 0 || strcmp(cmdName, "STR") == 0) {
+            printf("=== STR$ ===\n\n");
+            printf("Syntaxe: STR$(expression)\n\n");
+            printf("Description:\n");
+            printf("  Convertit un nombre en chaine de caracteres.\n\n");
+            printf("Exemples:\n");
+            printf("  A$ = STR$(42)       -> A$ = \"42\"\n");
+            printf("  PRINT \"X=\" + STR$(X) -> Affiche: X=10\n");
+            printf("  N$ = STR$(123.45)   -> N$ = \"123.45\"\n\n");
+        }
+        else if (strcmp(cmdName, "VAL") == 0) {
+            printf("=== VAL ===\n\n");
+            printf("Syntaxe: VAL(chaine$)\n\n");
+            printf("Description:\n");
+            printf("  Convertit une chaine de caracteres en nombre.\n");
+            printf("  S'arrete au premier caractere non numerique.\n\n");
+            printf("Exemples:\n");
+            printf("  PRINT VAL(\"42\")     -> Affiche: 42.00\n");
+            printf("  PRINT VAL(\"3.14\")   -> Affiche: 3.14\n");
+            printf("  X = VAL(\"123ABC\")   -> X = 123.00\n");
+            printf("  Y = VAL(\"ABC\")      -> Y = 0.00\n\n");
+        }
         else {
-            printf("Commande inconnue: %s\n", cmdName);
-            printf("Tapez HELP pour voir la liste des commandes disponibles.\n");
+            printf("Commande ou fonction inconnue: %s\n", cmdName);
+            printf("Tapez HELP pour voir la liste des commandes et fonctions disponibles.\n");
         }
     } else {
         printf("Usage: HELP [commande]\n");

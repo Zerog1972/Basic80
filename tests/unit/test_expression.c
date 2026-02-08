@@ -168,10 +168,60 @@ void test_expression_string(TestStats *stats) {
     setStringVariable(interp, "A$", "Hello");
     setStringVariable(interp, "B$", "World");
     
+    /* Test: Concaténation */
     tokens = tokenize("A$ + B$");
     pos = 0;
     result = evaluateStringExpression(interp, tokens, &pos);
     ASSERT_STR_EQUAL(result, "HelloWorld", "Concaténation A$ + B$");
+    free(result);
+    freeTokens(tokens);
+    
+    /* Test: MID$ - extraction normale */
+    tokens = tokenize("MID$(\"Hello\", 2, 3)");
+    pos = 0;
+    result = evaluateStringExpression(interp, tokens, &pos);
+    ASSERT_STR_EQUAL(result, "ell", "MID$(\"Hello\", 2, 3) = \"ell\"");
+    free(result);
+    freeTokens(tokens);
+    
+    /* Test: MID$ - extraction depuis le début */
+    tokens = tokenize("MID$(\"Bonjour\", 1, 3)");
+    pos = 0;
+    result = evaluateStringExpression(interp, tokens, &pos);
+    ASSERT_STR_EQUAL(result, "Bon", "MID$(\"Bonjour\", 1, 3) = \"Bon\"");
+    free(result);
+    freeTokens(tokens);
+    
+    /* Test: MID$ - extraction jusqu'à la fin */
+    tokens = tokenize("MID$(\"Test\", 3, 5)");
+    pos = 0;
+    result = evaluateStringExpression(interp, tokens, &pos);
+    ASSERT_STR_EQUAL(result, "st", "MID$(\"Test\", 3, 5) = \"st\" (tronqué)");
+    free(result);
+    freeTokens(tokens);
+    
+    /* Test: MID$ - position au-delà de la longueur */
+    tokens = tokenize("MID$(\"ABC\", 10, 2)");
+    pos = 0;
+    result = evaluateStringExpression(interp, tokens, &pos);
+    ASSERT_STR_EQUAL(result, "", "MID$(\"ABC\", 10, 2) = \"\" (chaîne vide)");
+    free(result);
+    freeTokens(tokens);
+    
+    /* Test: MID$ - avec variable */
+    setStringVariable(interp, "S$", "BASIC80");
+    tokens = tokenize("MID$(S$, 4, 2)");
+    pos = 0;
+    result = evaluateStringExpression(interp, tokens, &pos);
+    ASSERT_STR_EQUAL(result, "IC", "MID$(S$, 4, 2) = \"IC\" avec S$=\"BASIC80\"");
+    free(result);
+    freeTokens(tokens);
+    
+    /* Test: MID$ - longueur 1 */
+    tokens = tokenize("MID$(\"Test\", 2, 1)");
+    pos = 0;
+    result = evaluateStringExpression(interp, tokens, &pos);
+    ASSERT_STR_EQUAL(result, "e", "MID$(\"Test\", 2, 1) = \"e\"");
     free(result);
     freeTokens(tokens);
     

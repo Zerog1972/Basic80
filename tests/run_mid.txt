@@ -1,0 +1,3 @@
+LOAD "tests\test_mid.bas"
+RUN
+EXIT

@@ -50,9 +50,9 @@ static int isKeyword(const char *word, BasicTokenType *type) {
     if (strcmp(word, "RAD") == 0) { *type = TOK_RAD; return 1; }
     if (strcmp(word, "SGN") == 0) { *type = TOK_SGN; return 1; }
     if (strcmp(word, "LEN") == 0) { *type = TOK_LEN; return 1; }
-    if (strcmp(word, "MID") == 0) { *type = TOK_MID; return 1; }
-    if (strcmp(word, "LEFT") == 0) { *type = TOK_LEFT; return 1; }
-    if (strcmp(word, "RIGHT") == 0) { *type = TOK_RIGHT; return 1; }
+    if (strcmp(word, "MID$") == 0) { *type = TOK_MID; return 1; }
+    if (strcmp(word, "LEFT$") == 0) { *type = TOK_LEFT; return 1; }
+    if (strcmp(word, "RIGHT$") == 0) { *type = TOK_RIGHT; return 1; }
     if (strcmp(word, "CHR$") == 0) { *type = TOK_CHR; return 1; }
     if (strcmp(word, "ASC") == 0) { *type = TOK_ASC; return 1; }
     if (strcmp(word, "STR$") == 0) { *type = TOK_STR; return 1; }

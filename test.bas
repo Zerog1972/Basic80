@@ -1,3 +1,5 @@
-10 FOR I = 1 TO 10
-20 PRINT I * I
-30 NEXT I
+10 T$ = "Thierry JOUVE"
+20 L = LEN(T$)
+30 FOR I = 1 TO L
+40 PRINT SPACE$(I-1),MID$(T$,I,1)
+50 NEXT I
