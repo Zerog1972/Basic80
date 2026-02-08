@@ -68,9 +68,9 @@ Ces fonctions manipulent des chaînes de caractères.
 - **LEN(s$)** : Retourne la longueur de la chaîne `s$`. (Retourne un nombre)
 - **ASC(s$)** : Retourne le code ASCII du premier caractère de `s$`. (Retourne un nombre)
 - **CHR$(n)** : Retourne le caractère correspondant au code ASCII `n`. (Retourne une chaîne)
-- **MID(s$, start, len)** : Retourne une sous-chaîne de `s$` commençant à `start` (1-indexé) de longueur `len`. (Retourne une chaîne)
-- **LEFT(s$, n)** : Retourne les `n` premiers caractères de `s$`. (Retourne une chaîne)
-- **RIGHT(s$, n)** : Retourne les `n` derniers caractères de `s$`. (Retourne une chaîne)
+- **MID$(s$, start, len)** : Retourne une sous-chaîne de `s$` commençant à `start` (1-indexé) de longueur `len`. (Retourne une chaîne)
+- **LEFT$(s$, n)** : Retourne les `n` premiers caractères de `s$`. (Retourne une chaîne)
+- **RIGHT$(s$, n)** : Retourne les `n` derniers caractères de `s$`. (Retourne une chaîne)
 - **STR$(x)** : Convertit un nombre `x` en chaîne de caractères. (Retourne une chaîne)
 - **VAL(s$)** : Convertit une chaîne `s$` en nombre. (Retourne un nombre)
 - **SPACE$(n)** : Retourne une chaîne de `n` espaces. (Retourne une chaîne)
@@ -80,13 +80,14 @@ Exemple :
 ```basic
 LET A$ = "BONJOUR"
 PRINT LEN(A$)       ' Affiche 7
-PRINT LEFT(A$, 3)   ' Affiche BON
+PRINT LEFT$(A$, 3)  ' Affiche BON
 PRINT CHR$(65)      ' Affiche A
 PRINT STR$(42)      ' Affiche 42
 ```
 L'opérateur `+` permet la concaténation de deux chaînes.
 
-### Opérateurs de comparaison (déclarés):
+### Opérateurs de comparaison:
+- `=` Égal
 - `<` Inférieur à
 - `>` Supérieur à
 - `<=` Inférieur ou égal
@@ -143,7 +144,7 @@ Les tests unitaires incluent :
 - **Tests des chaînes de caractères** :
   - Affectation de chaînes littérales
   - Copie de chaînes entre variables
-  - Fonctions LEN(), ASC(), CHR(), MID(), LEFT(), RIGHT()
+  - Fonctions LEN(), ASC(), CHR$(), MID$(), LEFT$(), RIGHT$()
   - Fonctions STR$(), VAL(), SPACE$(), STRING$()
   - Concaténation de chaînes avec l'opérateur +
   - Conversions bidirectionnelles nombre ↔ chaîne
@@ -170,7 +171,7 @@ Les tests unitaires incluent :
   - RESTORE avec numéro de ligne
   - Détection d'erreur "Out of DATA"
 
-Total : **254 tests unitaires**
+Total : **196 tests unitaires**
 
 Le code est strictement conforme au standard **C89/ANSI C**.
 
@@ -460,10 +461,10 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 
 ### Exemple 24: Concaténation de chaînes
 ```basic
-10 LET A = "Hello" + " " + "World"
-20 LET B = LEFT("PROG", 2) + RIGHT("RAM", 2)
-30 PRINT "Phrase:", A
-40 PRINT "Fusion:", B
+10 LET A$ = "Hello" + " " + "World"
+20 LET B$ = LEFT$("PROG", 2) + RIGHT$("RAM", 2)
+30 PRINT "Phrase:", A$
+40 PRINT "Fusion:", B$
 50 END
 ```
 
@@ -632,7 +633,7 @@ Le projet est organisé comme suit :
 - **lexer.c** - Analyse lexicale et tokenisation
 
 ### Composants:
-1. **Lexer** - Tokenise le code source (41 mots-clés, 56 types de tokens)
+1. **Lexer** - Tokenise le code source (53 mots-clés, 73 types de tokens)
 2. **Variables** - Gestion variables numériques, chaînes, tableaux jusqu'à 10 dimensions
 3. **Expression** - Évaluation avec priorité des opérateurs, fonctions mathématiques et chaînes
 4. **Control Flow** - Gestion IF/THEN/ELSE, FOR/NEXT, GOTO, GOSUB/RETURN
