@@ -1,152 +1,156 @@
+/*
+ * control_flow.h - Control-flow statement declarations for Basic80
+ *
+ * Declares the handler functions for IF/THEN/ELSE, GOTO, GOSUB/RETURN,
+ * FOR/NEXT, and the utility helper findLineByNumber().
+ */
 #ifndef CONTROL_FLOW_H
 #define CONTROL_FLOW_H
 
 #include "interpreter.h"
 #include "lexer.h"
 
-/* ===== GESTION DU FLUX DE CONTRÔLE ===== */
+/* ===== CONTROL FLOW HANDLERS ===== */
 
 /**
- * Exécute une instruction IF/THEN/ELSE.
- * 
- * Évalue une condition et exécute les instructions appropriées
- * selon le résultat (branche THEN ou ELSE).
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens contenant l'instruction IF
- * @param currentLine Pointeur double vers la ligne courante (modifié si GOTO)
- * @return 1 si un saut a été effectué (GOTO dans THEN/ELSE), 0 sinon
- * 
- * Syntaxe BASIC:
- *   IF condition THEN instruction [ELSE instruction]
- *   IF condition THEN lineNum [ELSE lineNum]
- * 
- * Exemples:
- *   IF X > 5 THEN PRINT "Grand"
+ * Execute an IF/THEN/ELSE statement.
+ *
+ * Evaluates the condition and executes either the THEN branch or the
+ * optional ELSE branch depending on the result.
+ *
+ * @param interp       Pointer to the interpreter
+ * @param tokens       Token array containing the IF statement
+ * @param currentLine  Double pointer to the current line (modified on GOTO)
+ * @return 1 if a branch jump occurred (GOTO inside THEN/ELSE), 0 otherwise.
+ *
+ * BASIC syntax:
+ *   IF condition THEN statement [ELSE statement]
+ *   IF condition THEN lineNum  [ELSE lineNum]
+ *
+ * Examples:
+ *   IF X > 5 THEN PRINT "Large"
  *   IF A = 0 THEN GOTO 100
  *   IF X < 0 THEN Y = -1 ELSE Y = 1
  *   IF A$ = "Y" THEN 100 ELSE 200
- * 
- * Note: Seule la forme simple (une ligne) est supportée.
- *       Pour plusieurs instructions, utiliser des numéros de ligne.
+ *
+ * Note: Only single-line IF is supported.  Use GOTO with line numbers for
+ *       multi-statement branches.
  */
 int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine);
 
 /**
- * Exécute une instruction GOTO (saut inconditionnel).
- * 
- * Transfère le contrôle à la ligne spécifiée.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens contenant le numéro de ligne cible
- * @param currentLine Pointeur double vers la ligne courante (modifié)
- * @return 1 si le saut a réussi, 0 en cas d'erreur
- * 
- * Syntaxe BASIC:
+ * Execute a GOTO statement (unconditional jump).
+ *
+ * Transfers control to the specified line number.
+ *
+ * @param interp       Pointer to the interpreter
+ * @param tokens       Token array containing the target line number
+ * @param currentLine  Double pointer to the current line (modified)
+ * @return 1 if the jump succeeded, 0 on error (line not found).
+ *
+ * BASIC syntax:
  *   GOTO lineNum
- * 
- * Exemples:
+ *
+ * Examples:
  *   GOTO 100
  *   IF X = 0 THEN GOTO 200
- * 
- * Note: Si la ligne cible n'existe pas, une erreur est générée.
+ *
+ * Note: An error is reported if the target line does not exist.
  */
 int handleGoto(Interpreter *interp, Token *tokens, Line **currentLine);
 
 /**
- * Exécute une instruction GOSUB (appel de sous-routine).
- * 
- * Sauvegarde la ligne de retour et transfère le contrôle
- * à la sous-routine spécifiée. Utiliser RETURN pour revenir.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens contenant le numéro de ligne cible
- * @param currentLine Pointeur double vers la ligne courante (modifié)
- * @return 1 si le saut a réussi, 0 en cas d'erreur
- * 
- * Syntaxe BASIC:
+ * Execute a GOSUB statement (subroutine call).
+ *
+ * Pushes the return address onto the call stack and transfers control to
+ * the specified subroutine line.  Use RETURN to come back.
+ *
+ * @param interp       Pointer to the interpreter
+ * @param tokens       Token array containing the target line number
+ * @param currentLine  Double pointer to the current line (modified)
+ * @return 1 if the call succeeded, 0 on error.
+ *
+ * BASIC syntax:
  *   GOSUB lineNum
- * 
- * Exemples:
+ *
+ * Examples:
  *   GOSUB 1000
  *   IF FLAG THEN GOSUB 500
- * 
- * Note: Les appels GOSUB peuvent être imbriqués.
- *       La pile d'appels est gérée automatiquement.
+ *
+ * Note: GOSUB calls can be nested.  The call stack is managed automatically.
  */
 int handleGosub(Interpreter *interp, Token *tokens, Line **currentLine);
 
 /**
- * Exécute une instruction RETURN (retour de sous-routine).
- * 
- * Retourne à la ligne suivant le GOSUB correspondant.
- * Dépile la pile d'appels.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param currentLine Pointeur double vers la ligne courante (modifié)
- * @return 1 si le retour a réussi, 0 en cas d'erreur
- * 
- * Syntaxe BASIC:
+ * Execute a RETURN statement (subroutine return).
+ *
+ * Returns execution to the line following the most recent GOSUB.
+ * Pops the call stack.
+ *
+ * @param interp       Pointer to the interpreter
+ * @param currentLine  Double pointer to the current line (modified)
+ * @return 1 if the return succeeded, 0 if the call stack was empty.
+ *
+ * BASIC syntax:
  *   RETURN
- * 
- * Note: Une erreur est générée si RETURN est appelé sans GOSUB préalable.
+ *
+ * Note: An error is triggered if RETURN is executed without a prior GOSUB.
  */
 int handleReturn(Interpreter *interp, Line **currentLine);
 
 /**
- * Exécute une instruction FOR (début de boucle).
- * 
- * Initialise une boucle FOR avec une variable de contrôle,
- * une valeur de fin et un pas optionnel.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens contenant les paramètres de la boucle
- * @param currentLine Pointeur double vers la ligne courante (modifié si saut)
- * @return 1 si un saut vers NEXT a été effectué (pas de boucle), 0 sinon
- * 
- * Syntaxe BASIC:
+ * Execute a FOR statement (loop initialisation).
+ *
+ * Sets up the loop control variable, end value, and optional step, then
+ * decides whether to enter the loop body or skip to the matching NEXT.
+ *
+ * @param interp       Pointer to the interpreter
+ * @param tokens       Token array containing the FOR parameters
+ * @param currentLine  Double pointer to the current line (modified on skip)
+ * @return 1 if the loop body was skipped (step direction makes it empty), 0 otherwise.
+ *
+ * BASIC syntax:
  *   FOR variable = start TO end [STEP increment]
- * 
- * Exemples:
- *   FOR I = 1 TO 10          -> I va de 1 à 10 par pas de 1
- *   FOR X = 0 TO 100 STEP 5  -> X va de 0 à 100 par pas de 5
- *   FOR J = 10 TO 1 STEP -1  -> J va de 10 à 1 (décroissant)
- * 
- * Note: Si la condition de fin est déjà fausse au départ,
- *       la boucle n'est pas exécutée (saut au NEXT correspondant).
+ *
+ * Examples:
+ *   FOR I = 1 TO 10          -> I from 1 to 10 in steps of 1
+ *   FOR X = 0 TO 100 STEP 5  -> X from 0 to 100 in steps of 5
+ *   FOR J = 10 TO 1 STEP -1  -> J from 10 down to 1
+ *
+ * Note: If the initial condition is already false the loop body is never
+ *       executed (program counter jumps to the matching NEXT).
  */
 int handleFor(Interpreter *interp, Token *tokens, Line **currentLine);
 
 /**
- * Exécute une instruction NEXT (fin de boucle).
- * 
- * Incrémente la variable de contrôle et teste si la boucle continue.
- * Si la condition est remplie, retourne au FOR, sinon sort de la boucle.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @return 1 si un retour au FOR a été effectué, 0 sinon (fin de boucle)
- * 
- * Syntaxe BASIC:
+ * Execute a NEXT statement (loop end).
+ *
+ * Increments the loop variable and tests whether the loop should continue.
+ * Returns to the FOR line if so, or pops the loop stack and falls through.
+ *
+ * @param interp  Pointer to the interpreter
+ * @return 1 if execution should jump back to the FOR line, 0 if the loop ended.
+ *
+ * BASIC syntax:
  *   NEXT [variable]
- * 
- * Exemples:
+ *
+ * Examples:
  *   NEXT
  *   NEXT I
- * 
- * Note: Le nom de variable après NEXT est optionnel et ignoré.
- *       NEXT s'applique toujours au FOR le plus récent non terminé.
+ *
+ * Note: The variable name after NEXT is optional and currently ignored.
+ *       NEXT always applies to the innermost open FOR loop.
  */
 int handleNext(Interpreter *interp);
 
 /**
- * Recherche une ligne par son numéro dans le programme.
- * 
- * Fonction utilitaire pour localiser une ligne spécifique.
- * Utilisée par GOTO, GOSUB, et la gestion des boucles.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param lineNum Numéro de ligne à rechercher
- * @return Pointeur vers la ligne si trouvée, NULL sinon
+ * Locate a program line by its line number.
+ *
+ * Utility function used by GOTO, GOSUB, and the FOR/NEXT machinery.
+ *
+ * @param interp   Pointer to the interpreter
+ * @param lineNum  Line number to search for
+ * @return Pointer to the Line node if found, NULL otherwise.
  */
 Line* findLineByNumber(Interpreter *interp, int lineNum);
 

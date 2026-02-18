@@ -1,126 +1,134 @@
+/*
+ * expression.h - Expression evaluator interface for Basic80
+ *
+ * Declares the public functions used to evaluate numeric expressions,
+ * string expressions, and boolean conditions found in BASIC source lines.
+ */
 #ifndef EXPRESSION_H
 #define EXPRESSION_H
 
 #include "lexer.h"
 
-/* Forward declaration */
+/* Forward declaration (full definition is in interpreter.h) */
 typedef struct Interpreter Interpreter;
 
-/* ===== ÉVALUATION DES CONDITIONS ===== */
+/* ===== CONDITION EVALUATION ===== */
 
 /**
- * Évalue une condition booléenne (comparaison).
- * 
- * Évalue une expression de comparaison et retourne le résultat booléen.
- * Supporte les opérateurs: =, <, >, <=, >=, <>
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens contenant la condition
- * @param pos Pointeur vers la position courante (modifié après évaluation)
- * @return 1 si la condition est vraie, 0 si elle est fausse
- * 
- * Exemples:
+ * Evaluate a boolean condition expression.
+ *
+ * Evaluates a comparison expression and returns its boolean result.
+ * Supported relational operators: =  <  >  <=  >=  <>
+ *
+ * @param interp  Pointer to the interpreter
+ * @param tokens  Token array containing the condition
+ * @param pos     Position pointer (advanced past the condition on return)
+ * @return 1 if the condition is true, 0 if it is false.
+ *
+ * Examples:
  *   "10 > 5"    -> 1
- *   "X = 42"    -> 1 si X vaut 42, 0 sinon
- *   "A$ <> B$"  -> 1 si A$ différent de B$
+ *   "X = 42"    -> 1 if X equals 42, 0 otherwise
+ *   "A$ <> B$"  -> 1 if A$ differs from B$
  */
 int evaluateCondition(Interpreter *interp, Token *tokens, int *pos);
 
-/* ===== ÉVALUATION DES EXPRESSIONS NUMÉRIQUES ===== */
+/* ===== NUMERIC EXPRESSION EVALUATION ===== */
 
 /**
- * Évalue une expression arithmétique complète (addition, soustraction).
- * 
- * Point d'entrée principal pour l'évaluation d'expressions numériques.
- * Gère la priorité des opérateurs selon les règles mathématiques standard.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens contenant l'expression
- * @param pos Pointeur vers la position courante (modifié après évaluation)
- * @return Résultat numérique de l'expression
- * 
- * Exemples:
+ * Evaluate a complete arithmetic expression (addition and subtraction).
+ *
+ * Main entry point for numeric expression evaluation.  Respects standard
+ * operator precedence.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param tokens  Token array containing the expression
+ * @param pos     Position pointer (advanced past the expression on return)
+ * @return Numeric result of the expression.
+ *
+ * Examples:
  *   "10 + 5 * 2"      -> 20.0
  *   "(10 + 5) * 2"    -> 30.0
- *   "A + B - C"       -> Valeur calculée selon les variables
+ *   "A + B - C"       -> Computed value from the current variable state
  */
 double evaluateExpression(Interpreter *interp, Token *tokens, int *pos);
 
 /**
- * Évalue un terme (multiplication, division).
- * 
- * Gère les opérations de priorité moyenne (* et /).
- * Appelé par evaluateExpression() dans l'analyse descendante.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens
- * @param pos Pointeur vers la position courante
- * @return Résultat numérique du terme
+ * Evaluate a term (multiplication and division).
+ *
+ * Handles medium-precedence operators (* and /).  Called by
+ * evaluateExpression() in the recursive-descent hierarchy.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param tokens  Token array
+ * @param pos     Position pointer
+ * @return Numeric result of the term.
  */
 double evaluateTerm(Interpreter *interp, Token *tokens, int *pos);
 
 /**
- * Évalue un facteur (nombres, variables, fonctions, parenthèses).
- * 
- * Gère les éléments atomiques d'une expression:
- * - Nombres littéraux (42, 3.14)
- * - Variables (A, X, COUNT)
- * - Tableaux (A(5), M(2,3))
- * - Fonctions mathématiques (SIN, COS, SQR, ABS, etc.)
- * - Expressions entre parenthèses
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens
- * @param pos Pointeur vers la position courante
- * @return Résultat numérique du facteur
+ * Evaluate a factor (numbers, variables, functions, parenthesized expressions).
+ *
+ * Handles atomic expression elements:
+ *   - Numeric literals  (42, 3.14)
+ *   - Variables         (A, X, COUNT)
+ *   - Array elements    (A(5), M(2,3))
+ *   - Built-in math functions (SIN, COS, SQR, ABS, etc.)
+ *   - Custom numeric functions registered via registerCustomNumericFunction()
+ *   - Parenthesized sub-expressions
+ *
+ * @param interp  Pointer to the interpreter
+ * @param tokens  Token array
+ * @param pos     Position pointer
+ * @return Numeric result of the factor.
  */
 double evaluateFactor(Interpreter *interp, Token *tokens, int *pos);
 
-/* ===== ÉVALUATION DES EXPRESSIONS DE CHAÎNES ===== */
+/* ===== STRING EXPRESSION EVALUATION ===== */
 
 /**
- * Détermine si une expression est de type chaîne.
- * 
- * Analyse les tokens à partir de la position donnée pour déterminer
- * si l'expression évalue vers une chaîne (variable$, "littéral", fonctions).
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens
- * @param pos Position de départ (non modifiée)
- * @return 1 si l'expression est de type chaîne, 0 sinon
+ * Test whether the token at pos starts a string-valued expression.
+ *
+ * Inspects the token type and (for identifiers) the variable table to
+ * determine whether the expression will produce a string.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param tokens  Token array
+ * @param pos     Starting position (not modified)
+ * @return 1 if the expression is string-typed, 0 otherwise.
  */
 int isStringExpression(Interpreter *interp, Token *tokens, int pos);
 
 /**
- * Évalue une expression de chaîne (concaténation).
- * 
- * Évalue une expression produisant une chaîne de caractères.
- * Supporte la concaténation avec l'opérateur +.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens contenant l'expression
- * @param pos Pointeur vers la position courante (modifié après évaluation)
- * @return Chaîne de caractères résultante (doit être libérée par l'appelant)
- * 
- * Exemples:
- *   "A$ + B$"           -> Concaténation de deux variables
- *   "Hello" + " World"  -> "Hello World"
- *   LEFT$(A$, 3)        -> Premiers 3 caractères de A$
+ * Evaluate a string expression (handles + concatenation).
+ *
+ * Evaluates an expression that produces a string value.  Supports
+ * concatenation with the + operator.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param tokens  Token array containing the expression
+ * @param pos     Position pointer (advanced on return)
+ * @return Heap-allocated result string (caller must free it).
+ *
+ * Examples:
+ *   "A$ + B$"           -> Concatenation of two string variables
+ *   "\"Hello\" + \" World\""  -> "Hello World"
+ *   "LEFT$(A$, 3)"      -> First 3 characters of A$
  */
 char* evaluateStringExpression(Interpreter *interp, Token *tokens, int *pos);
 
 /**
- * Évalue un élément primaire de chaîne.
- * 
- * Gère les éléments atomiques d'une expression de chaîne:
- * - Chaînes littérales ("Hello")
- * - Variables chaînes (A$, NAME$)
- * - Fonctions de chaînes (LEFT$, MID$, RIGHT$, CHR$, STR$, etc.)
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param tokens Tableau de tokens
- * @param pos Pointeur vers la position courante
- * @return Chaîne de caractères résultante (doit être libérée par l'appelant)
+ * Evaluate a string primary element.
+ *
+ * Handles the atomic building blocks of a string expression:
+ *   - String literals  ("Hello")
+ *   - String variables (A$, NAME$)
+ *   - Built-in string functions (LEFT$, MID$, RIGHT$, CHR$, STR$, etc.)
+ *   - Custom string functions registered via registerCustomStringFunction()
+ *
+ * @param interp  Pointer to the interpreter
+ * @param tokens  Token array
+ * @param pos     Position pointer (advanced on return)
+ * @return Heap-allocated result string (caller must free it).
  */
 char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos);
 

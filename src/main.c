@@ -1,3 +1,17 @@
+/*
+ * main.c - Interactive REPL entry point for Basic80
+ *
+ * Provides a simple read-eval-print loop that accepts numbered BASIC lines
+ * (which are stored in the program), direct (un-numbered) commands (which
+ * are executed immediately), and a set of meta-commands:
+ *
+ *   LIST  - display all program lines
+ *   RUN   - execute the loaded program
+ *   NEW   - erase the program and reset the interpreter
+ *   SAVE "file" - save the program to a text file
+ *   LOAD "file" - load a program from a text file
+ *   EXIT  - quit the interpreter
+ */
 #include "interpreter.h"
 
 #ifdef _WIN32
@@ -18,36 +32,28 @@ int main(void) {
     interp = createInterpreter();
     
     printf("=== Basic80 ===\n");
-    printf("Commandes disponibles:\n");
-    printf("  - Numérotées: ajoutent au programme (ex: 10 PRINT \"Hello\")\n");
-    printf("  - LIST: affiche le programme\n");
-    printf("  - RUN: exécute le programme\n");
-    printf("  - NEW: efface le programme\n");
-    printf("  - SAVE \"fichier.bas\": sauvegarde le programme\n");
-    printf("  - LOAD \"fichier.bas\": charge un programme\n");
-    printf("  - EXIT: quitte l'interpréteur\n");
-    printf("  - Directes: exécutent immédiatement (PRINT, LET, etc.)\n\n");
+    printf("Type HELP to see available commands.\n\n");
     
     while (1) {
         printf("> ");
         if (!fgets(line, sizeof(line), stdin)) break;
         
-        /* Retirer le newline */
+        /* Strip the trailing newline */
         line[strcspn(line, "\n")] = 0;
         
-        /* Ligne vide */
+        /* Skip blank input */
         if (strlen(line) == 0) continue;
         
-        /* Commande EXIT */
+        /* EXIT command: quit the interpreter loop */
         if (strcmp(line, "EXIT") == 0) {
             break;
         }
         
-        /* Commande LIST */
+        /* LIST command: display all loaded program lines */
         if (strcmp(line, "LIST") == 0) {
             l = interp->program;
             if (!l) {
-                printf("Programme vide.\n");
+                printf("Program is empty.\n");
             } else {
                 while (l) {
                     printf("%d %s\n", l->lineNum, l->code);
@@ -57,27 +63,27 @@ int main(void) {
             continue;
         }
         
-        /* Commande RUN */
+        /* RUN command: execute the loaded program */
         if (strcmp(line, "RUN") == 0) {
             runProgram(interp);
             continue;
         }
         
-        /* Commande NEW */
+        /* NEW command: erase the program and reset the interpreter */
         if (strcmp(line, "NEW") == 0) {
             freeInterpreter(interp);
             interp = createInterpreter();
-            printf("Programme effacé.\n");
+            printf("Program cleared.\n");
             continue;
         }
         
-        /* Commande SAVE */
+        /* SAVE command: save the program to a file */
         if (strncmp(line, "SAVE ", 5) == 0 || strncmp(line, "SAVE\"", 5) == 0) {
             char *filename;
             char *start;
             char *end;
             
-            /* Trouver le nom du fichier entre guillemets */
+            /* Extract the filename from between double quotes */
             start = strchr(line, '"');
             if (start) {
                 start++;
@@ -86,24 +92,24 @@ int main(void) {
                     *end = '\0';
                     filename = start;
                     if (saveProgram(interp, filename)) {
-                        printf("Programme sauvegardé dans '%s'.\n", filename);
+                        printf("Program saved to '%s'.\n", filename);
                     }
                 } else {
-                    printf("Erreur: Guillemet fermant manquant.\n");
+                    printf("Error: Missing closing quote.\n");
                 }
             } else {
-                printf("Erreur: Nom de fichier entre guillemets requis (ex: SAVE \"prog.bas\").\n");
+                printf("Error: Filename in quotes required (e.g. SAVE \"prog.bas\").\n");
             }
             continue;
         }
         
-        /* Commande LOAD */
+        /* LOAD command: load a program from a file */
         if (strncmp(line, "LOAD ", 5) == 0 || strncmp(line, "LOAD\"", 5) == 0) {
             char *filename;
             char *start;
             char *end;
             
-            /* Trouver le nom du fichier entre guillemets */
+            /* Extract the filename from between double quotes */
             start = strchr(line, '"');
             if (start) {
                 start++;
@@ -112,18 +118,18 @@ int main(void) {
                     *end = '\0';
                     filename = start;
                     if (loadProgram(interp, filename)) {
-                        printf("Programme chargé depuis '%s'.\n", filename);
+                        printf("Program loaded from '%s'.\n", filename);
                     }
                 } else {
-                    printf("Erreur: Guillemet fermant manquant.\n");
+                    printf("Error: Missing closing quote.\n");
                 }
             } else {
-                printf("Erreur: Nom de fichier entre guillemets requis (ex: LOAD \"prog.bas\").\n");
+                printf("Error: Filename in quotes required (e.g. LOAD \"prog.bas\").\n");
             }
             continue;
         }
         
-        /* Vérifier si c'est une ligne numérotée */
+        /* Check whether the line starts with a line number */
         lineNum = 0;
         i = 0;
         while (line[i] && isdigit(line[i])) {
@@ -132,22 +138,22 @@ int main(void) {
         }
         
         if (lineNum > 0 && (isspace(line[i]) || line[i] == '\0')) {
-            /* Ligne numérotée */
+            /* Numbered line */
             while (line[i] && isspace(line[i])) i++;
             if (line[i]) {
-                /* Il y a du code - ajouter/modifier la ligne */
+                /* Line has code: add or replace it in the program */
                 addLine(interp, lineNum, &line[i]);
             } else {
-                /* Pas de code - supprimer la ligne */
+                /* No code after the number: delete the line */
                 deleteLine(interp, lineNum);
             }
         } else {
-            /* Commande immédiate */
+            /* Immediate (direct) command: execute right away */
             executeCommand(interp, line);
         }
     }
     
-    printf("\nAu revoir!\n");
+    printf("\nGoodbye!\n");
     freeInterpreter(interp);
     return 0;
 }

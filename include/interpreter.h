@@ -1,3 +1,11 @@
+/*
+ * interpreter.h - Core interpreter declarations for Basic80
+ *
+ * Defines the ErrorType enumeration, the program/loop/stack/data structures,
+ * the extension hook system, and the Interpreter aggregate struct.
+ * Declares all public functions for creating, running, and extending the
+ * BASIC interpreter.
+ */
 #ifndef INTERPRETER_H
 #define INTERPRETER_H
 
@@ -10,27 +18,27 @@
 #include "variables.h"
 #include "expression.h"
 
-/* Types d'erreurs */
+/* Error categories */
 typedef enum {
     ERR_NONE,
-    ERR_SYNTAX,          /* Erreur de syntaxe */
-    ERR_RUNTIME,         /* Erreur d'exécution */
-    ERR_TYPE_MISMATCH,   /* Incompatibilité de types */
-    ERR_OUT_OF_DATA,     /* Plus de données DATA */
-    ERR_DIVISION_ZERO,   /* Division par zéro */
-    ERR_UNDEFINED_VAR,   /* Variable non définie */
-    ERR_ARRAY_BOUNDS,    /* Dépassement de tableau */
-    ERR_OUT_OF_MEMORY    /* Mémoire insuffisante */
+    ERR_SYNTAX,          /* Syntax error                  */
+    ERR_RUNTIME,         /* Runtime error                 */
+    ERR_TYPE_MISMATCH,   /* Type mismatch                 */
+    ERR_OUT_OF_DATA,     /* No more DATA items            */
+    ERR_DIVISION_ZERO,   /* Division by zero              */
+    ERR_UNDEFINED_VAR,   /* Undefined variable            */
+    ERR_ARRAY_BOUNDS,    /* Array index out of bounds     */
+    ERR_OUT_OF_MEMORY    /* Out of memory                 */
 } ErrorType;
 
-/* Structure pour une ligne de code */
+/* A single line of stored BASIC source code */
 typedef struct Line {
     int lineNum;
     char *code;
     struct Line *next;
 } Line;
 
-/* Structure pour une boucle FOR */
+/* Active FOR loop entry on the loop stack */
 typedef struct ForLoop {
     char *varName;
     double endValue;
@@ -39,299 +47,290 @@ typedef struct ForLoop {
     struct ForLoop *next;
 } ForLoop;
 
-/* Structure pour la pile d'appels GOSUB */
+/* GOSUB return-address entry on the call stack */
 typedef struct CallStack {
     Line *returnLine;
     struct CallStack *next;
 } CallStack;
 
-/* Structure pour stocker les données DATA */
+/* A single DATA item (stored as a string for type flexibility) */
 typedef struct DataItem {
-    char *value;  /* Stocke la valeur comme chaîne */
-    int lineNum;  /* Numéro de ligne pour RESTORE */
+    char *value;  /* Value stored as a string                */
+    int lineNum;  /* Source line number, used by RESTORE     */
     struct DataItem *next;
 } DataItem;
 
-/* ===== SYSTÈME DE HOOKS/CALLBACKS POUR L'EXTENSION ===== */
+/* ===== EXTENSION HOOK SYSTEM ===== */
 
-/* Type de callback pour une fonction numérique personnalisée */
+/* Callback type for a custom numeric function */
 typedef double (*CustomNumericFunction)(struct Interpreter *interp, Token *tokens, int *pos);
 
-/* Type de callback pour une fonction chaîne personnalisée */
+/* Callback type for a custom string function */
 typedef char* (*CustomStringFunction)(struct Interpreter *interp, Token *tokens, int *pos);
 
-/* Type de callback pour une commande personnalisée */
+/* Callback type for a custom BASIC command */
 typedef void (*CustomCommandHandler)(struct Interpreter *interp, Token *tokens);
 
-/* Structure pour stocker une fonction numérique personnalisée */
+/* Registry node for a custom numeric function */
 typedef struct CustomNumFunc {
-    char *name;                      /* Nom de la fonction (ex: "MYSIN") */
-    CustomNumericFunction handler;   /* Pointeur vers la fonction */
+    char *name;                      /* Function name, e.g. "MYSIN"    */
+    CustomNumericFunction handler;   /* Pointer to the callback         */
     struct CustomNumFunc *next;
 } CustomNumFunc;
 
-/* Structure pour stocker une fonction chaîne personnalisée */
+/* Registry node for a custom string function */
 typedef struct CustomStrFunc {
-    char *name;                      /* Nom de la fonction (ex: "REVERSE$") */
-    CustomStringFunction handler;    /* Pointeur vers la fonction */
+    char *name;                      /* Function name, e.g. "REVERSE$" */
+    CustomStringFunction handler;    /* Pointer to the callback         */
     struct CustomStrFunc *next;
 } CustomStrFunc;
 
-/* Structure pour stocker une commande personnalisée */
+/* Registry node for a custom command */
 typedef struct CustomCommand {
-    char *name;                      /* Nom de la commande (ex: "BEEP") */
-    CustomCommandHandler handler;    /* Pointeur vers le gestionnaire */
+    char *name;                      /* Command name, e.g. "BEEP"      */
+    CustomCommandHandler handler;    /* Pointer to the handler          */
     struct CustomCommand *next;
 } CustomCommand;
 
-/* Structure pour l'interpréteur */
+/* Central interpreter state */
 struct Interpreter {
     Line *program;
     Variable *variables;
     Line *currentLine;
     ForLoop *forStack;
     CallStack *callStack;
-    DataItem *dataList;      /* Liste chaînée des DATA */
-    DataItem *dataPointer;   /* Pointeur de lecture courant */
+    DataItem *dataList;      /* Head of the DATA linked list              */
+    DataItem *dataPointer;   /* Current READ position in the DATA list    */
     int hasError;
-    ErrorType lastErrorType; /* Type de la dernière erreur */
-    int errorColumn;         /* Colonne de l'erreur (position dans la ligne) */
-    char errorContext[256];  /* Contexte de l'erreur (extrait de code) */
-    
-    /* Hooks pour l'extension */
-    CustomNumFunc *customNumFuncs;   /* Liste des fonctions numériques personnalisées */
-    CustomStrFunc *customStrFuncs;   /* Liste des fonctions chaînes personnalisées */
-    CustomCommand *customCommands;   /* Liste des commandes personnalisées */
+    ErrorType lastErrorType; /* Category of the most recent error         */
+    int errorColumn;         /* Column offset of the error in the line    */
+    char errorContext[256];  /* Code snippet displayed with the error     */
+
+    /* Extension hook registries */
+    CustomNumFunc *customNumFuncs;   /* Registered custom numeric functions */
+    CustomStrFunc *customStrFuncs;   /* Registered custom string functions  */
+    CustomCommand *customCommands;   /* Registered custom commands          */
 };
 
-/* ===== FONCTIONS DE L'INTERPRÉTEUR ===== */
+/* ===== INTERPRETER FUNCTIONS ===== */
 
 /**
- * Crée et initialise un nouvel interpréteur BASIC.
- * 
- * Alloue la mémoire nécessaire et initialise tous les champs.
- * L'interpréteur doit être libéré avec freeInterpreter() après utilisation.
- * 
- * @return Pointeur vers le nouvel interpréteur, NULL en cas d'échec d'allocation
+ * Create and initialise a new BASIC interpreter.
+ *
+ * Allocates the Interpreter struct and sets all fields to their initial
+ * values.  The interpreter must be released with freeInterpreter() when
+ * no longer needed.
+ *
+ * @return Pointer to the new interpreter, or NULL on allocation failure.
  */
 Interpreter* createInterpreter(void);
 
 /**
- * Libère toute la mémoire associée à un interpréteur.
- * 
- * Désalloue le programme, les variables, les boucles FOR,
- * la pile d'appels GOSUB, et les données DATA.
- * 
- * @param interp Pointeur vers l'interpréteur à libérer (peut être NULL)
+ * Release all memory owned by an interpreter.
+ *
+ * Frees the program line list, variables, FOR stack, GOSUB call stack,
+ * DATA list, and all extension hook registries.
+ *
+ * @param interp  Pointer to the interpreter to free (NULL is accepted).
  */
 void freeInterpreter(Interpreter *interp);
 
 /**
- * Ajoute ou remplace une ligne dans le programme.
- * 
- * Si une ligne avec le même numéro existe déjà, elle est remplacée.
- * Les lignes sont automatiquement triées par numéro de ligne.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param lineNum Numéro de ligne (doit être positif)
- * @param code Code source de la ligne (sans le numéro de ligne)
- * 
- * Exemples:
+ * Add or replace a numbered line in the program.
+ *
+ * If a line with the same number already exists it is replaced; otherwise
+ * the new line is inserted so that the program remains sorted by line number.
+ *
+ * @param interp   Pointer to the interpreter
+ * @param lineNum  Line number (must be positive)
+ * @param code     Source text for the line (without the leading number)
+ *
+ * Examples:
  *   addLine(interp, 10, "PRINT \"Hello\"");
  *   addLine(interp, 20, "LET A = 42");
  */
 void addLine(Interpreter *interp, int lineNum, const char *code);
 
 /**
- * Supprime une ligne du programme.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param lineNum Numéro de ligne à supprimer
- * 
- * Note: Si la ligne n'existe pas, aucune action n'est effectuée.
+ * Delete a numbered line from the program.
+ *
+ * @param interp   Pointer to the interpreter
+ * @param lineNum  Line number to delete
+ *
+ * Note: If the line does not exist, this function is a no-op.
  */
 void deleteLine(Interpreter *interp, int lineNum);
 
 /**
- * Exécute le programme chargé en mémoire.
- * 
- * Lance l'exécution depuis la première ligne jusqu'à la dernière
- * ou jusqu'à rencontrer END ou une erreur.
- * Gère les boucles FOR/NEXT et les appels GOSUB/RETURN.
- * 
- * @param interp Pointeur vers l'interpréteur
+ * Run the program currently loaded in the interpreter.
+ *
+ * Executes from the first line through to END (or the last line), handling
+ * FOR/NEXT loops and GOSUB/RETURN calls.  Stops early if an error is raised.
+ *
+ * @param interp  Pointer to the interpreter
  */
 void runProgram(Interpreter *interp);
 
 /**
- * Exécute une commande en mode direct (sans numéro de ligne).
- * 
- * Permet d'exécuter une instruction BASIC immédiatement sans
- * l'ajouter au programme. Utilisé en mode interactif.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param line Ligne de commande à exécuter
- * 
- * Exemples:
+ * Execute a single statement in immediate (direct) mode.
+ *
+ * Parses and executes the given line without adding it to the stored
+ * program.  Used by the interactive REPL.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param line    Statement text to execute
+ *
+ * Examples:
  *   executeCommand(interp, "PRINT A");
  *   executeCommand(interp, "LET X = 10");
  */
 void executeCommand(Interpreter *interp, const char *line);
 
 /**
- * Affiche le programme chargé en mémoire.
- * 
- * Liste toutes les lignes du programme dans l'ordre,
- * avec leurs numéros de ligne.
- * 
- * @param interp Pointeur vers l'interpréteur
+ * List all lines of the stored program to stdout.
+ *
+ * Prints each line in ascending line-number order.
+ *
+ * @param interp  Pointer to the interpreter
  */
 void listProgram(Interpreter *interp);
 
 /**
- * Efface tout le programme de la mémoire.
- * 
- * Supprime toutes les lignes de code, mais conserve les variables.
- * Pour réinitialiser complètement, utiliser freeInterpreter()
- * suivi de createInterpreter().
- * 
- * @param interp Pointeur vers l'interpréteur
+ * Remove all lines from the stored program.
+ *
+ * Variables are preserved.  To reset the interpreter completely, call
+ * freeInterpreter() followed by createInterpreter().
+ *
+ * @param interp  Pointer to the interpreter
  */
 void clearProgram(Interpreter *interp);
 
 /**
- * Sauvegarde le programme dans un fichier.
- * 
- * Écrit toutes les lignes du programme dans le fichier spécifié
- * au format texte (une ligne par instruction).
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param filename Nom du fichier de destination
- * @return 1 en cas de succès, 0 en cas d'erreur
+ * Save the current program to a text file.
+ *
+ * Writes each line (number + code) in ascending order, one per text line.
+ *
+ * @param interp    Pointer to the interpreter
+ * @param filename  Destination file path
+ * @return 1 on success, 0 on I/O error.
  */
 int saveProgram(Interpreter *interp, const char *filename);
 
 /**
- * Charge un programme depuis un fichier.
- * 
- * Efface le programme actuel et charge le contenu du fichier.
- * Chaque ligne doit commencer par un numéro de ligne.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param filename Nom du fichier source
- * @return 1 en cas de succès, 0 en cas d'erreur
+ * Load a program from a text file.
+ *
+ * Clears the current program first, then reads lines from the file.
+ * Each file line must begin with a line number.
+ *
+ * @param interp    Pointer to the interpreter
+ * @param filename  Source file path
+ * @return 1 on success, 0 on I/O error.
  */
 int loadProgram(Interpreter *interp, const char *filename);
 
-/* ===== GESTION DES ERREURS ===== */
+/* ===== ERROR REPORTING ===== */
 
 /**
- * Signale une erreur d'exécution (version simple).
- * 
- * Affiche un message d'erreur et positionne le drapeau hasError.
- * Utiliser reportErrorEx() pour un rapport d'erreur plus détaillé.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param message Message d'erreur à afficher
- * 
- * Note: Cette fonction est conservée pour compatibilité.
- *       Préférer reportErrorEx() pour les nouvelles implémentations.
+ * Report a runtime error (simple form).
+ *
+ * Prints the message and sets the hasError flag.  Prefer reportErrorEx()
+ * for new code as it provides richer diagnostics.
+ *
+ * @param interp   Pointer to the interpreter
+ * @param message  Error message to display
  */
 void reportError(Interpreter *interp, const char *message);
 
 /**
- * Signale une erreur avec contexte détaillé.
- * 
- * Affiche un message d'erreur avec:
- * - Type d'erreur catégorisé
- * - Numéro de ligne
- * - Position dans la ligne (colonne)
- * - Code source avec curseur visuel
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param type Type d'erreur (ERR_SYNTAX, ERR_RUNTIME, etc.)
- * @param column Position du curseur dans la ligne (0 = début)
- * @param message Message explicatif de l'erreur
- * 
- * Exemple d'affichage:
- *   [ERREUR Syntaxe] Ligne 10, colonne 5: Variable attendue
+ * Report an error with full source context.
+ *
+ * Prints the error category, current line number, column offset, and a
+ * visual caret pointing to the offending position in the source.
+ *
+ * @param interp   Pointer to the interpreter
+ * @param type     Error category (ERR_SYNTAX, ERR_RUNTIME, etc.)
+ * @param column   Column offset within the current line (0 = start)
+ * @param message  Explanatory error message
+ *
+ * Sample output:
+ *   [ERROR Syntax] Line 10, column 5: Variable expected
  *     --> LET = 5
  *          ^
  */
 void reportErrorEx(Interpreter *interp, ErrorType type, int column, const char *message);
 
 /**
- * Retourne le nom lisible d'un type d'erreur.
- * 
- * @param type Type d'erreur
- * @return Chaîne de caractères décrivant le type d'erreur
- * 
- * Exemples:
- *   getErrorTypeName(ERR_SYNTAX)     -> "Syntaxe"
- *   getErrorTypeName(ERR_RUNTIME)    -> "Exécution"
+ * Return a human-readable name for an error category.
+ *
+ * @param type  Error category value
+ * @return Pointer to a static string describing the category.
+ *
+ * Examples:
+ *   getErrorTypeName(ERR_SYNTAX)        -> "Syntax"
+ *   getErrorTypeName(ERR_RUNTIME)       -> "Runtime"
  *   getErrorTypeName(ERR_TYPE_MISMATCH) -> "Type"
  */
 const char* getErrorTypeName(ErrorType type);
 
-/* ===== SYSTÈME DE HOOKS/CALLBACKS ===== */
+/* ===== EXTENSION HOOK REGISTRY ===== */
 
 /**
- * Enregistre une fonction numérique personnalisée.
- * 
- * Permet d'ajouter de nouvelles fonctions mathématiques ou numériques
- * qui peuvent être appelées depuis le code BASIC.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param name Nom de la fonction (sera converti en majuscules)
- * @param handler Pointeur vers la fonction de callback
- * @return 1 en cas de succès, 0 en cas d'erreur (mémoire insuffisante)
- * 
- * Exemple:
+ * Register a custom numeric function callable from BASIC.
+ *
+ * After registration the function can be invoked by name in any numeric
+ * expression, e.g. PRINT DOUBLE(21).
+ *
+ * @param interp    Pointer to the interpreter
+ * @param name      Function name (converted to uppercase internally)
+ * @param handler   Callback that evaluates the function
+ * @return 1 on success, 0 on allocation failure.
+ *
+ * Example:
  *   double myDouble(Interpreter *interp, Token *tokens, int *pos) {
  *       double arg = evaluateExpression(interp, tokens, pos);
  *       return arg * 2.0;
  *   }
  *   registerCustomNumericFunction(interp, "DOUBLE", myDouble);
- *   // BASIC: PRINT DOUBLE(21)  ' Affiche: 42
+ *   // BASIC: PRINT DOUBLE(21)  -> 42
  */
 int registerCustomNumericFunction(Interpreter *interp, const char *name, CustomNumericFunction handler);
 
 /**
- * Enregistre une fonction chaîne personnalisée.
- * 
- * Permet d'ajouter de nouvelles fonctions de manipulation de chaînes
- * qui peuvent être appelées depuis le code BASIC.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param name Nom de la fonction (sera converti en majuscules, doit se terminer par $)
- * @param handler Pointeur vers la fonction de callback
- * @return 1 en cas de succès, 0 en cas d'erreur (mémoire insuffisante)
- * 
- * Exemple:
+ * Register a custom string function callable from BASIC.
+ *
+ * After registration the function can be used in string expressions,
+ * e.g. PRINT REVERSE$("Hello").
+ *
+ * @param interp    Pointer to the interpreter
+ * @param name      Function name (must end with '$'; converted to uppercase)
+ * @param handler   Callback that returns a heap-allocated string (caller frees)
+ * @return 1 on success, 0 on allocation failure.
+ *
+ * Example:
  *   char* myReverse(Interpreter *interp, Token *tokens, int *pos) {
  *       char *str = evaluateStringExpression(interp, tokens, pos);
- *       // ... inverser str ...
- *       return str;  // L'appelant libérera la mémoire
+ *       // ... reverse str in place ...
+ *       return str;
  *   }
  *   registerCustomStringFunction(interp, "REVERSE$", myReverse);
- *   // BASIC: PRINT REVERSE$("Hello")  ' Affiche: olleH
+ *   // BASIC: PRINT REVERSE$("Hello")  -> olleH
  */
 int registerCustomStringFunction(Interpreter *interp, const char *name, CustomStringFunction handler);
 
 /**
- * Enregistre une commande personnalisée.
- * 
- * Permet d'ajouter de nouvelles commandes qui peuvent être exécutées
- * depuis le code BASIC.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param name Nom de la commande (sera converti en majuscules)
- * @param handler Pointeur vers le gestionnaire de commande
- * @return 1 en cas de succès, 0 en cas d'erreur (mémoire insuffisante)
- * 
- * Exemple:
+ * Register a custom BASIC command.
+ *
+ * After registration the command keyword can appear at the start of any
+ * BASIC statement, e.g. BEEP.
+ *
+ * @param interp    Pointer to the interpreter
+ * @param name      Command name (converted to uppercase internally)
+ * @param handler   Callback that executes the command
+ * @return 1 on success, 0 on allocation failure.
+ *
+ * Example:
  *   void myBeep(Interpreter *interp, Token *tokens) {
- *       printf("\a");  // Émet un bip
+ *       printf("\a");
  *       fflush(stdout);
  *   }
  *   registerCustomCommand(interp, "BEEP", myBeep);
@@ -340,30 +339,30 @@ int registerCustomStringFunction(Interpreter *interp, const char *name, CustomSt
 int registerCustomCommand(Interpreter *interp, const char *name, CustomCommandHandler handler);
 
 /**
- * Recherche une fonction numérique personnalisée par son nom.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param name Nom de la fonction à rechercher
- * @return Pointeur vers le handler si trouvé, NULL sinon
+ * Look up a registered custom numeric function by name.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param name    Function name to search for
+ * @return The handler pointer if found, NULL otherwise.
  */
 CustomNumericFunction findCustomNumericFunction(Interpreter *interp, const char *name);
 
 /**
- * Recherche une fonction chaîne personnalisée par son nom.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param name Nom de la fonction à rechercher
- * @return Pointeur vers le handler si trouvé, NULL sinon
+ * Look up a registered custom string function by name.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param name    Function name to search for
+ * @return The handler pointer if found, NULL otherwise.
  */
 CustomStringFunction findCustomStringFunction(Interpreter *interp, const char *name);
 
 /**
- * Recherche une commande personnalisée par son nom.
- * 
- * @param interp Pointeur vers l'interpréteur
- * @param name Nom de la commande à rechercher
- * @return Pointeur vers le handler si trouvé, NULL sinon
+ * Look up a registered custom command by name.
+ *
+ * @param interp  Pointer to the interpreter
+ * @param name    Command name to search for
+ * @return The handler pointer if found, NULL otherwise.
  */
 CustomCommandHandler findCustomCommand(Interpreter *interp, const char *name);
 
-#endif /* UTILS_H */
+#endif /* INTERPRETER_H */

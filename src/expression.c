@@ -1,3 +1,15 @@
+/*
+ * expression.c - Expression evaluator for the Basic80 interpreter
+ *
+ * Implements a recursive-descent parser that evaluates numeric and
+ * string expressions found in BASIC source lines.  The hierarchy is:
+ *   evaluateExpression  (+/-)
+ *     evaluateTerm      (mul/div)  
+ *       evaluateFactor  (literals, variables, built-in functions)
+ *
+ * String expressions are handled separately through
+ * evaluateStringExpression / evaluateStringPrimary.
+ */
 #include "expression.h"
 #include "interpreter.h"
 #include "variables.h"
@@ -5,12 +17,13 @@
 #include <string.h>
 #include <math.h>
 
+/* Returns 1 if the variable name ends with '$' (string variable convention) */
 static int isStringVariable(const char *name) {
     size_t len = strlen(name);
     return len > 0 && name[len - 1] == '$';
 }
 
-/* Évaluer une condition (pour IF...THEN) */
+/* Evaluate a boolean condition expression (used by the IF statement) */
 int evaluateCondition(Interpreter *interp, Token *tokens, int *pos) {
     double left, right;
     BasicTokenType op;
@@ -35,11 +48,11 @@ int evaluateCondition(Interpreter *interp, Token *tokens, int *pos) {
         }
     }
     
-    /* Si pas d'opérateur de comparaison, considérer comme vrai si non-zéro */
+    /* No relational operator found: treat as true if non-zero */
     return left != 0;
 }
 
-/* Évaluer un facteur (nombre, variable ou parenthèses) */
+/* Evaluate a factor: number literal, variable, array access, or built-in function */
 double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
     double result;
     char varName[256];
@@ -57,7 +70,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
         
         strcpy(varName, tokens[*pos].value);
         
-        /* Vérifier d'abord si c'est une fonction personnalisée */
+        /* Check whether this identifier names a custom numeric function */
         customFunc = findCustomNumericFunction(interp, varName);
         if (customFunc) {
             (*pos)++; /* Passer le nom de la fonction */
@@ -67,27 +80,27 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
                 if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             }
         } else {
-            /* C'est une variable ou un tableau */
+            /* Regular variable or array element */
             if (isStringVariable(varName)) {
-                reportErrorEx(interp, ERR_TYPE_MISMATCH, *pos, "Variable chaîne utilisée dans une expression numérique.");
+                reportErrorEx(interp, ERR_TYPE_MISMATCH, *pos, "String variable used in a numeric expression.");
                 (*pos)++; /* Skip variable to avoid infinite loop if caller retries? Or just return 0 */
                 return 0.0;
             }
 
             (*pos)++;
             
-            /* Vérifier si c'est un accès à un tableau */
+            /* Check if this is an indexed array access */
             if (tokens[*pos].type == TOK_LPAREN) {
                 (*pos)++;
                 numIndices = 0;
-                /* Lire tous les indices séparés par des virgules */
+                /* Read all comma-separated indices */
                 while (numIndices < 10) {
                     indices[numIndices] = (int)evaluateExpression(interp, tokens, pos);
                     numIndices++;
                     if (tokens[*pos].type == TOK_COMMA) {
-                        (*pos)++; /* Passer la virgule */
+                        (*pos)++; /* Advance past the comma */
                     } else {
-                        break; /* Fin des indices */
+                        break; /* No more indices */
                     }
                 }
                 if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
@@ -206,7 +219,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             (*pos)++;
             arg = evaluateExpression(interp, tokens, pos);
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
-            /* SGN retourne -1, 0 ou 1 selon le signe */
+            /* SGN returns -1, 0, or +1 depending on the sign of the argument */
             if (arg < 0) result = -1.0;
             else if (arg > 0) result = 1.0;
             else result = 0.0;
@@ -217,10 +230,10 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             (*pos)++;
             arg = evaluateExpression(interp, tokens, pos);
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
-            /* RND(n) retourne un nombre aléatoire entre 0 et n-1 */
+            /* RND(n) returns a random integer in [0, n-1] */
             result = (double)(rand() % (int)arg);
         } else {
-            /* RND sans parenthèses retourne un nombre entre 0.0 et 1.0 */
+            /* RND without parentheses returns a float in [0.0, 1.0) */
             result = (double)rand() / (double)RAND_MAX;
         }
     } else if (tokens[*pos].type == TOK_LOG) {
@@ -277,7 +290,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             result = arg * 3.14159265358979323846 / 180.0;
         }
     } else if (tokens[*pos].type == TOK_LEN) {
-        /* LEN(string) - retourne la longueur d'une chaîne */
+        /* LEN(string) - returns the number of characters in a string */
         char varName[256];
         (*pos)++;
         if (tokens[*pos].type == TOK_LPAREN) {
@@ -293,7 +306,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
         }
     } else if (tokens[*pos].type == TOK_ASC) {
-        /* ASC(string) - retourne le code ASCII du premier caractère */
+        /* ASC(string) - returns the ASCII code of the first character */
         char varName[256];
         char *str;
         (*pos)++;
@@ -316,7 +329,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
         }
     } else if (tokens[*pos].type == TOK_VAL) {
-        /* VAL(string) - convertit une chaîne en nombre */
+        /* VAL(string) - converts a string to its numeric value */
         char varName[256];
         char *str;
         (*pos)++;
@@ -343,7 +356,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
     return result;
 }
 
-/* Évaluer un terme (multiplication et division) */
+/* Evaluate a term: handles multiplication and division */
 double evaluateTerm(Interpreter *interp, Token *tokens, int *pos) {
     double result;
     BasicTokenType op;
@@ -372,7 +385,7 @@ double evaluateTerm(Interpreter *interp, Token *tokens, int *pos) {
     return result;
 }
 
-/* Évaluer une primitive de chaîne (littéral, variable ou fonction) */
+/* Evaluate a string primary: string literal, variable, or string function call */
 char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
     char *result = NULL;
     char varName[256];
@@ -381,7 +394,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
     int strLen;
 
     if (tokens[*pos].type == TOK_NUMBER) {
-        /* Convertir un nombre littéral en chaîne */
+        /* Convert a numeric literal to its string representation */
         double numValue = atof(tokens[*pos].value);
         result = (char*)malloc(50);
         if (result) {
@@ -392,7 +405,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         }
         (*pos)++;
     } else if (tokens[*pos].type == TOK_LPAREN) {
-        /* Expression entre parenthèses - peut être numérique */
+        /* Parenthesized expression - evaluate numerically and convert to string */
         double numValue = evaluateExpression(interp, tokens, pos);
         result = (char*)malloc(50);
         if (result) {
@@ -415,7 +428,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         
         strcpy(varName, tokens[*pos].value);
         
-        /* Vérifier d'abord si c'est une fonction chaîne personnalisée */
+        /* Check whether this identifier names a custom string function */
         customFunc = findCustomStringFunction(interp, varName);
         if (customFunc) {
             (*pos)++; /* Passer le nom de la fonction */
@@ -425,9 +438,9 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
                 if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             }
         } else {
-            /* C'est une variable */
+            /* Regular string variable or numeric variable coerced to string */
             if (!isStringVariable(varName)) {
-                /* Variable numérique - la convertir en chaîne */
+                /* Numeric variable: evaluate and convert to string */
                 double numValue;
                 numValue = evaluateExpression(interp, tokens, pos);
                 result = (char*)malloc(50);
@@ -542,7 +555,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             free(str);
         }
     } else if (tokens[*pos].type == TOK_STR) {
-        /* STR$(x) - convertit un nombre en chaîne */
+        /* STR$(x) - converts a number to its string representation */
         double numValue;
         (*pos)++;
         if (tokens[*pos].type == TOK_LPAREN) {
@@ -558,7 +571,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             }
         }
     } else if (tokens[*pos].type == TOK_SPACE) {
-        /* SPACE$(n) - retourne une chaîne de n espaces */
+        /* SPACE$(n) - returns a string of n space characters */
         int i;
         (*pos)++;
         if (tokens[*pos].type == TOK_LPAREN) {
@@ -578,7 +591,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             }
         }
     } else if (tokens[*pos].type == TOK_STRING_FUNC) {
-        /* STRING$(n,c) - répète n fois le caractère c */
+        /* STRING$(n,c) - returns a string of n repetitions of character c */
         int i;
         char c;
         (*pos)++;
@@ -586,7 +599,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             (*pos)++;
             n = (int)evaluateExpression(interp, tokens, pos);
             if (tokens[*pos].type == TOK_COMMA) (*pos)++;
-            /* Le caractère peut être un code ASCII ou une chaîne */
+            /* The character argument may be an ASCII code or a string literal */
             if (tokens[*pos].type == TOK_NUMBER) {
                 c = (char)((int)evaluateExpression(interp, tokens, pos));
             } else if (tokens[*pos].type == TOK_STRING) {
@@ -618,7 +631,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
     return result;
 }
 
-/* Évaluer une expression de chaîne avec concaténation (+) */
+/* Evaluate a string expression, handling + concatenation */
 char* evaluateStringExpression(Interpreter *interp, Token *tokens, int *pos) {
     char *result;
 
@@ -639,7 +652,7 @@ char* evaluateStringExpression(Interpreter *interp, Token *tokens, int *pos) {
         free(rhs);
         result = concat ? concat : (char*)malloc(1);
         if (!result) {
-            /* Allocation échouée, retourner chaîne vide */
+            /* Allocation failed: return an empty string */
             result = (char*)malloc(1);
             if (result) result[0] = '\0';
         }
@@ -648,7 +661,7 @@ char* evaluateStringExpression(Interpreter *interp, Token *tokens, int *pos) {
     return result;
 }
 
-/* Vérifier si un token commence une expression de chaîne */
+/* Return 1 if the token at pos starts a string-valued expression */
 int isStringExpression(Interpreter *interp, Token *tokens, int pos) {
     Variable *var;
     if (tokens[pos].type == TOK_IDENTIFIER) {
@@ -667,7 +680,7 @@ int isStringExpression(Interpreter *interp, Token *tokens, int pos) {
            tokens[pos].type == TOK_STRING_FUNC;
 }
 
-/* Évaluer une expression (addition et soustraction) */
+/* Evaluate a full numeric expression: handles addition and subtraction */
 double evaluateExpression(Interpreter *interp, Token *tokens, int *pos) {
     double result;
     BasicTokenType op;

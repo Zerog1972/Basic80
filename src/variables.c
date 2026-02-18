@@ -1,9 +1,18 @@
+/*
+ * variables.c - Variable storage and array management for Basic80
+ *
+ * Implements a singly-linked list of Variable nodes that holds both
+ * scalar values (numeric or string) and multi-dimensional numeric
+ * arrays.  All functions operate through an Interpreter pointer so
+ * that the variable table stays encapsulated inside the interpreter
+ * state.
+ */
 #include "variables.h"
 #include "interpreter.h"
 #include <stdlib.h>
 #include <string.h>
 
-/* Trouver une variable par son nom */
+/* Find a variable by name; returns NULL if not found */
 Variable* findVariable(Interpreter *interp, const char *name) {
     Variable *var = interp->variables;
     while (var) {
@@ -13,7 +22,7 @@ Variable* findVariable(Interpreter *interp, const char *name) {
     return NULL;
 }
 
-/* Définir une variable numérique */
+/* Set a numeric variable, creating it if it does not exist yet */
 void setVariable(Interpreter *interp, const char *name, double value) {
     Variable *var;
     Variable *newVar;
@@ -45,7 +54,7 @@ void setVariable(Interpreter *interp, const char *name, double value) {
     }
 }
 
-/* Obtenir la valeur d'une variable numérique */
+/* Get the numeric value of a variable; returns 0.0 if not defined */
 double getVariable(Interpreter *interp, const char *name) {
     Variable *var = findVariable(interp, name);
     if (var && !var->isArray && !var->isString) {
@@ -54,7 +63,7 @@ double getVariable(Interpreter *interp, const char *name) {
     return 0.0;
 }
 
-/* Définir une variable chaîne */
+/* Set a string variable, creating it if it does not exist yet */
 void setStringVariable(Interpreter *interp, const char *name, const char *value) {
     Variable *var;
     Variable *newVar;
@@ -101,7 +110,7 @@ void setStringVariable(Interpreter *interp, const char *name, const char *value)
     }
 }
 
-/* Obtenir une variable chaîne */
+/* Get the string value of a variable; returns "" if not defined */
 char* getStringVariable(Interpreter *interp, const char *name) {
     Variable *var = findVariable(interp, name);
     if (var && var->isString && var->strValue) {
@@ -110,14 +119,14 @@ char* getStringVariable(Interpreter *interp, const char *name) {
     return "";
 }
 
-/* Créer un tableau multi-dimensionnel */
+/* Create a multi-dimensional numeric array (all elements initialised to 0.0) */
 void createArray(Interpreter *interp, const char *name, int *dims, int numDims) {
     Variable *var;
     Variable *newVar;
     int i;
     int totalSize;
     
-    /* Calculer la taille totale */
+    /* Compute the total number of elements (product of all dimension sizes) */
     totalSize = 1;
     for (i = 0; i < numDims; i++) {
         totalSize *= dims[i];
@@ -125,7 +134,7 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
     
     var = findVariable(interp, name);
     if (var) {
-        /* Si la variable existe déjà, la transformer en tableau */
+        /* Variable already exists: replace its storage with a new array */
         if (var->arrayValues) {
             free(var->arrayValues);
         }
@@ -154,7 +163,7 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
             var->arrayValues[i] = 0.0;
         }
     } else {
-        /* Créer une nouvelle variable tableau */
+        /* Variable does not exist: allocate a brand-new array variable */
         newVar = malloc(sizeof(Variable));
         if (!newVar) return;
         newVar->name = malloc(strlen(name) + 1);
@@ -193,7 +202,7 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
     }
 }
 
-/* Définir la valeur d'un élément de tableau */
+/* Set the value of a single array element */
 void setArrayElement(Interpreter *interp, const char *name, int *indices, int numIndices, double value) {
     Variable *var;
     int flatIndex;
@@ -206,13 +215,13 @@ void setArrayElement(Interpreter *interp, const char *name, int *indices, int nu
         return;
     }
     
-    /* Convertir les indices multi-dimensionnels en index plat (row-major order) */
+    /* Convert multi-dimensional indices to a flat (row-major) offset */
     flatIndex = 0;
     for (i = 0; i < numIndices; i++) {
         if (indices[i] < 0 || indices[i] >= var->dimensions[i]) {
-            return; /* Index hors limites */
+            return; /* Index out of bounds */
         }
-        /* Calculer le multiplicateur pour cette dimension */
+        /* Stride for this dimension: product of all subsequent dimension sizes */
         multiplier = 1;
         for (j = i + 1; j < numIndices; j++) {
             multiplier *= var->dimensions[j];
@@ -225,7 +234,7 @@ void setArrayElement(Interpreter *interp, const char *name, int *indices, int nu
     }
 }
 
-/* Obtenir la valeur d'un élément de tableau */
+/* Get the value of a single array element; returns 0.0 on error */
 double getArrayElement(Interpreter *interp, const char *name, int *indices, int numIndices) {
     Variable *var;
     int flatIndex;
@@ -238,13 +247,13 @@ double getArrayElement(Interpreter *interp, const char *name, int *indices, int 
         return 0.0;
     }
     
-    /* Convertir les indices multi-dimensionnels en index plat (row-major order) */
+    /* Convert multi-dimensional indices to a flat (row-major) offset */
     flatIndex = 0;
     for (i = 0; i < numIndices; i++) {
         if (indices[i] < 0 || indices[i] >= var->dimensions[i]) {
-            return 0.0; /* Index hors limites */
+            return 0.0; /* Index out of bounds */
         }
-        /* Calculer le multiplicateur pour cette dimension */
+        /* Stride for this dimension: product of all subsequent dimension sizes */
         multiplier = 1;
         for (j = i + 1; j < numIndices; j++) {
             multiplier *= var->dimensions[j];

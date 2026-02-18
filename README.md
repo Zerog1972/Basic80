@@ -1,231 +1,231 @@
 # Basic80
 
-Un interpréteur simple pour le langage BASIC classique.
+A simple interpreter for the classic BASIC language.
 
-## Fonctionnalités
+## Features
 
-### Variables et Types de Données
-Le langage impose un typage strict basé sur le nom des variables :
-- **Variables Numériques** (Double précision) :
-  - Le nom ne doit **pas** se terminer par `$`.
-  - Exemples : `X`, `COMPTE`, `PI`, `A1`.
-  - Valeur par défaut : `0.0`.
-- **Variables Chaînes** (String) :
-  - Le nom **doit** se terminer par `$`.
-  - Exemples : `NOM$`, `TEXT$`, `A$`.
-  - Valeur par défaut : `""` (chaîne vide).
-  - La longueur maximale d'une chaîne est techniquement limitée par la mémoire, mais les opérations sont gérées dynamiquement.
+### Variables and Data Types
+The language enforces strict typing based on variable names:
+- **Numeric Variables** (double precision):
+  - The name must **not** end with `$`.
+  - Examples: `X`, `COUNT`, `PI`, `A1`.
+  - Default value: `0.0`.
+- **String Variables**:
+  - The name **must** end with `$`.
+  - Examples: `NAME$`, `TEXT$`, `A$`.
+  - Default value: `""` (empty string).
+  - Maximum string length is technically limited by memory; operations are handled dynamically.
 
-### Commandes BASIC supportées:
-- **PRINT** - Affiche du texte et des variables
-- **LET** - Assigne une valeur à une variable
-- **DIM** - Déclare un tableau
-- **INPUT** - Lit une valeur numérique ou une chaîne (pour variable `VAR$`) depuis l'utilisateur
-- **GOTO** - Saute à une ligne numérotée
-- **GOSUB** - Appelle une sous-routine
-- **RETURN** - Retourne de la sous-routine
-- **IF...THEN...ELSE** - Exécution conditionnelle
-- **FOR...TO...STEP...NEXT** - Boucles avec compteur
-- **DATA** - Déclare des constantes dans le programme
-- **READ** - Lit les valeurs DATA dans les variables
-- **RESTORE** - Réinitialise le pointeur de lecture DATA (avec ou sans numéro de ligne)
-- **REM** - Commentaires
-- **END** - Termine le programme
-- **HELP** - Affiche l'aide sur les commandes disponibles
+### Supported BASIC commands:
+- **PRINT** - Display text and variables
+- **LET** - Assign a value to a variable
+- **DIM** - Declare an array
+- **INPUT** - Read a numeric value or a string (for `VAR$` variables) from the user
+- **GOTO** - Jump to a numbered line
+- **GOSUB** - Call a subroutine
+- **RETURN** - Return from a subroutine
+- **IF...THEN...ELSE** - Conditional execution
+- **FOR...TO...STEP...NEXT** - Counter loops
+- **DATA** - Declare constants in the program
+- **READ** - Read DATA values into variables
+- **RESTORE** - Reset the DATA read pointer (with or without a line number)
+- **REM** - Comments
+- **END** - End the program
+- **HELP** - Display help on available commands
 
-### Opérateurs mathématiques:
+### Arithmetic operators:
 - `+` Addition
-- `-` Soustraction
+- `-` Subtraction
 - `*` Multiplication
 - `/` Division
-- `()` Parenthèses pour la priorité
+- `()` Parentheses for precedence
 
-### Fonctions mathématiques:
-- **SIN(x)** - Sinus (x en radians)
-- **COS(x)** - Cosinus (x en radians)
-- **TAN(x)** - Tangente (x en radians)
-- **ATAN(x)** ou **ATN(x)** - Arc Tangente (retourne radians)
-- **ASIN(x)** - Arc Sinus (retourne radians)
-- **ACOS(x)** - Arc Cosinus (retourne radians)
-- **SINH(x)** - Sinus Hyperbolique
-- **COSH(x)** - Cosinus Hyperbolique
-- **TANH(x)** - Tangente Hyperbolique
-- **RAD(x)** - Convertit degres en radians
-- **DEG(x)** - Convertit radians en degres
-- **SQR(x)** - Racine carrée
-- **ABS(x)** - Valeur absolue
-- **SGN(x)** - Signe du nombre (-1, 0 ou 1)
-- **INT(x)** - Partie entière (arrondi vers le bas)
-- **RND(x)** - Nombre aléatoire entre 0 et x-1
-- **RND** - Nombre aléatoire entre 0.0 et 1.0
-- **LOG(x)** - Logarithme naturel (ln)
-- **EXP(x)** - Exponentielle (e^x)
-- **POW(x, y)** - Puissance (x^y)
-- **LOG10(x)** - Logarithme base 10
+### Math functions:
+- **SIN(x)** - Sine (x in radians)
+- **COS(x)** - Cosine (x in radians)
+- **TAN(x)** - Tangent (x in radians)
+- **ATAN(x)** or **ATN(x)** - Arctangent (returns radians)
+- **ASIN(x)** - Arcsine (returns radians)
+- **ACOS(x)** - Arccosine (returns radians)
+- **SINH(x)** - Hyperbolic sine
+- **COSH(x)** - Hyperbolic cosine
+- **TANH(x)** - Hyperbolic tangent
+- **RAD(x)** - Convert degrees to radians
+- **DEG(x)** - Convert radians to degrees
+- **SQR(x)** - Square root
+- **ABS(x)** - Absolute value
+- **SGN(x)** - Sign of a number (-1, 0, or 1)
+- **INT(x)** - Integer part (rounds down)
+- **RND(x)** - Random integer between 0 and x-1
+- **RND** - Random number between 0.0 and 1.0
+- **LOG(x)** - Natural logarithm (ln)
+- **EXP(x)** - Exponential (e^x)
+- **POW(x, y)** - Power (x^y)
+- **LOG10(x)** - Base-10 logarithm
 
-### Fonctions de chaînes:
-Ces fonctions manipulent des chaînes de caractères.
-- **LEN(s$)** : Retourne la longueur de la chaîne `s$`. (Retourne un nombre)
-- **ASC(s$)** : Retourne le code ASCII du premier caractère de `s$`. (Retourne un nombre)
-- **CHR$(n)** : Retourne le caractère correspondant au code ASCII `n`. (Retourne une chaîne)
-- **MID$(s$, start, len)** : Retourne une sous-chaîne de `s$` commençant à `start` (1-indexé) de longueur `len`. (Retourne une chaîne)
-- **LEFT$(s$, n)** : Retourne les `n` premiers caractères de `s$`. (Retourne une chaîne)
-- **RIGHT$(s$, n)** : Retourne les `n` derniers caractères de `s$`. (Retourne une chaîne)
-- **STR$(x)** : Convertit un nombre `x` en chaîne de caractères. (Retourne une chaîne)
-- **VAL(s$)** : Convertit une chaîne `s$` en nombre. (Retourne un nombre)
-- **SPACE$(n)** : Retourne une chaîne de `n` espaces. (Retourne une chaîne)
-- **STRING$(n, c)** : Retourne une chaîne de `n` répétitions du caractère `c` (code ASCII ou chaîne d'un caractère). (Retourne une chaîne)
+### String functions:
+These functions manipulate strings.
+- **LEN(s$)** : Returns the length of string `s$`. (Returns a number)
+- **ASC(s$)** : Returns the ASCII code of the first character of `s$`. (Returns a number)
+- **CHR$(n)** : Returns the character corresponding to ASCII code `n`. (Returns a string)
+- **MID$(s$, start, len)** : Returns a substring of `s$` starting at `start` (1-indexed) of length `len`. (Returns a string)
+- **LEFT$(s$, n)** : Returns the first `n` characters of `s$`. (Returns a string)
+- **RIGHT$(s$, n)** : Returns the last `n` characters of `s$`. (Returns a string)
+- **STR$(x)** : Converts a number `x` to a string. (Returns a string)
+- **VAL(s$)** : Converts a string `s$` to a number. (Returns a number)
+- **SPACE$(n)** : Returns a string of `n` spaces. (Returns a string)
+- **STRING$(n, c)** : Returns a string of `n` repetitions of character `c` (ASCII code or single-character string). (Returns a string)
 
-Exemple :
+Example:
 ```basic
-LET A$ = "BONJOUR"
-PRINT LEN(A$)       ' Affiche 7
-PRINT LEFT$(A$, 3)  ' Affiche BON
-PRINT CHR$(65)      ' Affiche A
-PRINT STR$(42)      ' Affiche 42
+LET A$ = "HELLO"
+PRINT LEN(A$)       ' Outputs 5
+PRINT LEFT$(A$, 3)  ' Outputs HEL
+PRINT CHR$(65)      ' Outputs A
+PRINT STR$(42)      ' Outputs 42
 ```
-L'opérateur `+` permet la concaténation de deux chaînes.
+The `+` operator concatenates two strings.
 
-### Opérateurs de comparaison:
-- `=` Égal
-- `<` Inférieur à
-- `>` Supérieur à
-- `<=` Inférieur ou égal
-- `>=` Supérieur ou égal
-- `<>` Différent
+### Comparison operators:
+- `=` Equal
+- `<` Less than
+- `>` Greater than
+- `<=` Less than or equal
+- `>=` Greater than or equal
+- `<>` Not equal
 
-## Utilisation
+## Usage
 
 ### Compilation
 ```bash
 clang -std=c89 -pedantic -Wall -g -Iinclude src/*.c -o basic80.exe
 ```
 
-Ou utilisez la tâche VS Code: **C/C++: clang.exe build all files**
+Or use the VS Code task: **C/C++: clang.exe build all files**
 
-### Tests unitaires
-Compiler et exécuter les tests :
+### Unit tests
+Compile and run the tests:
 ```bash
 clang -std=c89 -pedantic -Wall -g -Iinclude tests/tests.c src/interpreter.c src/lexer.c src/variables.c src/expression.c src/control_flow.c src/commands.c -o tests.exe
 .\tests.exe
 ```
 
-Les tests unitaires incluent :
-- **Tests du lexer** : nombres, identifiants, mots-clés, opérateurs, chaînes
-- **Tests de l'interpréteur** : variables, lignes, commandes LET, expressions
-- **Tests des conditions IF...THEN...ELSE** :
-  - IF...THEN simple (condition vraie/fausse)
-  - IF...THEN...ELSE complet
-  - Tests de tous les opérateurs de comparaison (<, >, <=, >=, =, <>)
+The unit tests include:
+- **Lexer tests**: numbers, identifiers, keywords, operators, strings
+- **Interpreter tests**: variables, lines, LET commands, expressions
+- **IF...THEN...ELSE condition tests**:
+  - Simple IF...THEN (true/false condition)
+  - Full IF...THEN...ELSE
+  - All comparison operators (<, >, <=, >=, =, <>)
   - IF...THEN GOTO
-  - IF...THEN...ELSE avec GOTO
-- **Tests des tableaux DIM** :
-  - Déclaration et affectation d'éléments simples (1D)
-  - Remplissage de tableaux avec boucle FOR
-  - Lecture d'éléments de tableau dans expressions
-  - Calculs avec tableaux (somme des éléments)
-  - Utilisation de variables comme indices
-- **Tests des tableaux multi-dimensionnels** :
-  - Tableaux 2D simples (matrices)
-  - Tableaux 2D avec boucles FOR imbriquées
-  - Matrices identité (avec conditions IF)
-  - Expressions dans les indices de tableaux 2D
-  - Tableaux 3D simples (cubes)
-  - Tableaux 3D avec boucles FOR triples
-- **Tests des fonctions mathématiques** :
-  - Fonctions trigonométriques (SIN, COS, TAN)
-  - Fonctions mathématiques (SQR, ABS, INT)
-  - Fonctions composées et expressions complexes
-- **Tests de GOSUB/RETURN** :
-  - GOSUB simple avec sous-routine
-  - GOSUB avec calculs (réutilisation de sous-routine)
-  - GOSUB imbriqués (sous-routines appelées depuis sous-routines)
-  - GOSUB dans boucle FOR
-- **Tests des chaînes de caractères** :
-  - Affectation de chaînes littérales
-  - Copie de chaînes entre variables
-  - Fonctions LEN(), ASC(), CHR$(), MID$(), LEFT$(), RIGHT$()
-  - Fonctions STR$(), VAL(), SPACE$(), STRING$()
-  - Concaténation de chaînes avec l'opérateur +
-  - Conversions bidirectionnelles nombre ↔ chaîne
-- **Tests des boucles FOR** :
-  - Boucle FOR simple (1 TO 5)
-  - Boucle FOR avec STEP positif (0 TO 10 STEP 2)
-  - Boucle FOR descendante avec STEP négatif (10 TO 1 STEP -1)
-  - Boucles FOR avec limites spéciales (debut = fin, debut > fin)
-  - Boucles FOR imbriquées
-  - Boucles FOR avec calculs (factorielle, somme des carrés)
-  - Boucles FOR avec variables pour limites
-- **Tests des nouvelles fonctions** :
-  - Fonction mathématique ATN(x) - arc tangente
-  - Fonction mathématique SGN(x) - signe du nombre
-  - Fonction de chaîne STR$(x) - nombre vers chaîne
-  - Fonction de chaîne VAL(s) - chaîne vers nombre
-  - Fonction de chaîne SPACE$(n) - génération d'espaces
-  - Fonction de chaîne STRING$(n,c) - répétition de caractères
-- **Tests des commandes DATA/READ/RESTORE** :
-  - Lecture de nombres avec DATA/READ
-  - Lecture de chaînes avec DATA/READ
-  - Plusieurs statements DATA consécutifs
-  - RESTORE sans paramètre (retour au début)
-  - RESTORE avec numéro de ligne
-  - Détection d'erreur "Out of DATA"
+  - IF...THEN...ELSE with GOTO
+- **DIM array tests**:
+  - Declaration and assignment of simple elements (1D)
+  - Filling arrays with a FOR loop
+  - Reading array elements in expressions
+  - Array calculations (sum of elements)
+  - Using variables as indices
+- **Multi-dimensional array tests**:
+  - Simple 2D arrays (matrices)
+  - 2D arrays with nested FOR loops
+  - Identity matrices (with IF conditions)
+  - Expressions in 2D array indices
+  - Simple 3D arrays (cubes)
+  - 3D arrays with triple FOR loops
+- **Math function tests**:
+  - Trigonometric functions (SIN, COS, TAN)
+  - Math functions (SQR, ABS, INT)
+  - Composite functions and complex expressions
+- **GOSUB/RETURN tests**:
+  - Simple GOSUB with a subroutine
+  - GOSUB with calculations (reusing a subroutine)
+  - Nested GOSUB (subroutines called from subroutines)
+  - GOSUB inside a FOR loop
+- **String tests**:
+  - Assigning string literals
+  - Copying strings between variables
+  - Functions LEN(), ASC(), CHR$(), MID$(), LEFT$(), RIGHT$()
+  - Functions STR$(), VAL(), SPACE$(), STRING$()
+  - String concatenation with the + operator
+  - Two-way conversions number ↔ string
+- **FOR loop tests**:
+  - Simple FOR loop (1 TO 5)
+  - FOR loop with positive STEP (0 TO 10 STEP 2)
+  - Descending FOR loop with negative STEP (10 TO 1 STEP -1)
+  - FOR loops with edge cases (start = end, start > end)
+  - Nested FOR loops
+  - FOR loops with calculations (factorial, sum of squares)
+  - FOR loops with variables as limits
+- **New function tests**:
+  - Math function ATN(x) - arctangent
+  - Math function SGN(x) - sign of a number
+  - String function STR$(x) - number to string
+  - String function VAL(s) - string to number
+  - String function SPACE$(n) - generate spaces
+  - String function STRING$(n,c) - repeat a character
+- **DATA/READ/RESTORE command tests**:
+  - Reading numbers with DATA/READ
+  - Reading strings with DATA/READ
+  - Multiple consecutive DATA statements
+  - RESTORE without parameter (rewind to beginning)
+  - RESTORE with a line number
+  - "Out of DATA" error detection
 
-Total : **196 tests unitaires**
+Total: **196 unit tests**
 
-Le code est strictement conforme au standard **C89/ANSI C**.
+The code strictly conforms to the **C89/ANSI C** standard.
 
-### Exécution
+### Running
 ```bash
 ./basic80.exe
 ```
 
-### Mode interactif
+### Interactive mode
 
-**Commandes du shell:**
-- `LIST` - Affiche le programme en mémoire
-- `RUN` - Exécute le programme
-- `NEW` - Efface le programme
-- `SAVE "fichier.bas"` - Sauvegarde le programme dans un fichier
-- `LOAD "fichier.bas"` - Charge un programme depuis un fichier
-- `HELP` - Affiche l'aide sur les commandes (utilisez `HELP COMMANDE` pour plus de détails)
-- `EXIT` - Quitte l'interpréteur
+**Shell commands:**
+- `LIST` - Display the program in memory
+- `RUN` - Run the program
+- `NEW` - Clear the program
+- `SAVE "file.bas"` - Save the program to a file
+- `LOAD "file.bas"` - Load a program from a file
+- `HELP` - Display help on commands (use `HELP COMMAND` for more details)
+- `EXIT` - Quit the interpreter
 
-**Lignes numérotées:**
-Ajoutent des instructions au programme (ex: `10 PRINT "Hello"`)
+**Numbered lines:**
+Add instructions to the program (e.g. `10 PRINT "Hello"`)
 
-**Commandes directes:**
-S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
+**Direct commands:**
+Execute immediately (e.g. `PRINT "Hello"`)
 
-## Exemples
+## Examples
 
-### Exemple 1: Programme simple
+### Example 1: Simple program
 ```basic
 10 PRINT "Hello, World!"
 20 LET X = 42
-30 PRINT "La réponse est:", X
+30 PRINT "The answer is:", X
 40 END
 ```
 
-### Exemple 2: Calculs
+### Example 2: Calculations
 ```basic
 10 LET A = 10
 20 LET B = 5
 30 LET C = A + B * 2
-40 PRINT "Résultat:", C
+40 PRINT "Result:", C
 50 END
 ```
 
-### Exemple 3: Avec INPUT
+### Example 3: Using INPUT
 ```basic
-10 PRINT "Entrez votre age:"
+10 PRINT "Enter your age:"
 20 INPUT AGE
-30 LET ANNEES = 100 - AGE
-40 PRINT "Il vous reste environ", ANNEES, "annees"
+30 LET YEARS = 100 - AGE
+40 PRINT "You have approximately", YEARS, "years left"
 50 END
 ```
 
-### Exemple 4: Boucle FOR simple
+### Example 4: Simple FOR loop
 ```basic
 10 FOR I = 1 TO 5
 20 PRINT "I =", I
@@ -233,7 +233,7 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 40 END
 ```
 
-### Exemple 5: Boucle FOR avec STEP
+### Example 5: FOR loop with STEP
 ```basic
 10 FOR I = 0 TO 10 STEP 2
 20 PRINT "I =", I
@@ -241,110 +241,110 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 40 END
 ```
 
-### Exemple 6: Boucle FOR descendante
+### Example 6: Descending FOR loop
 ```basic
 10 FOR I = 10 TO 1 STEP -1
-20 PRINT "Compte a rebours:", I
+20 PRINT "Countdown:", I
 30 NEXT I
-40 PRINT "Decollage!"
+40 PRINT "Liftoff!"
 50 END
 ```
 
-### Exemple 7: Calcul avec boucle FOR
+### Example 7: Calculation with FOR loop
 ```basic
 10 LET TOTAL = 0
 20 FOR I = 1 TO 10
 30 LET TOTAL = TOTAL + I
 40 NEXT I
-50 PRINT "Somme de 1 a 10 =", TOTAL
+50 PRINT "Sum from 1 to 10 =", TOTAL
 60 END
 ```
 
-### Exemple 8: Condition IF...THEN
+### Example 8: IF...THEN condition
 ```basic
 10 INPUT X
-20 IF X > 0 THEN PRINT "Nombre positif"
+20 IF X > 0 THEN PRINT "Positive number"
 30 END
 ```
 
-### Exemple 9: Condition IF...THEN...ELSE
+### Example 9: IF...THEN...ELSE condition
 ```basic
-10 PRINT "Entrez votre age:"
+10 PRINT "Enter your age:"
 20 INPUT AGE
-30 IF AGE >= 18 THEN PRINT "Majeur" ELSE PRINT "Mineur"
+30 IF AGE >= 18 THEN PRINT "Adult" ELSE PRINT "Minor"
 40 END
 ```
 
-### Exemple 10: IF avec GOTO
+### Example 10: IF with GOTO
 ```basic
 10 LET SCORE = 75
 20 IF SCORE >= 60 THEN GOTO 50
-30 PRINT "Echec"
+30 PRINT "Fail"
 40 GOTO 60
-50 PRINT "Reussite"
+50 PRINT "Pass"
 60 END
 ```
 
-### Exemple 11: Tableaux simples
+### Example 11: Simple arrays
 ```basic
 10 DIM A(5)
 20 LET A(0) = 10
 30 LET A(1) = 20
 40 LET A(2) = 30
-50 PRINT "Premier element:", A(0)
-60 PRINT "Deuxieme element:", A(1)
+50 PRINT "First element:", A(0)
+60 PRINT "Second element:", A(1)
 70 END
 ```
 
-### Exemple 12: Tableaux avec boucle
+### Example 12: Arrays with a loop
 ```basic
-10 DIM NOMBRES(10)
+10 DIM NUMBERS(10)
 20 FOR I = 0 TO 10
-30 LET NOMBRES(I) = I * I
+30 LET NUMBERS(I) = I * I
 40 NEXT I
-50 PRINT "Carres de 0 a 10:"
+50 PRINT "Squares from 0 to 10:"
 60 FOR I = 0 TO 10
-70 PRINT I, "au carre =", NOMBRES(I)
+70 PRINT I, "squared =", NUMBERS(I)
 80 NEXT I
 90 END
 ```
 
-### Exemple 13: Somme des éléments d'un tableau
+### Example 13: Sum of array elements
 ```basic
-10 DIM VALEURS(5)
-20 LET VALEURS(0) = 10
-30 LET VALEURS(1) = 20
-40 LET VALEURS(2) = 30
-50 LET VALEURS(3) = 40
-60 LET VALEURS(4) = 50
+10 DIM VALUES(5)
+20 LET VALUES(0) = 10
+30 LET VALUES(1) = 20
+40 LET VALUES(2) = 30
+50 LET VALUES(3) = 40
+60 LET VALUES(4) = 50
 70 LET TOTAL = 0
 80 FOR I = 0 TO 4
-90 LET TOTAL = TOTAL + VALEURS(I)
+90 LET TOTAL = TOTAL + VALUES(I)
 100 NEXT I
-110 PRINT "Somme totale:", TOTAL
+110 PRINT "Total sum:", TOTAL
 120 END
 ```
 
-### Exemple 14: Tableaux multi-dimensionnels - Matrice 3x3
+### Example 14: Multi-dimensional arrays - 3x3 matrix
 ```basic
-10 REM Matrice 3x3
+10 REM 3x3 matrix
 20 DIM M(3, 3)
-30 REM Remplir la matrice avec boucles
+30 REM Fill the matrix with loops
 40 FOR I = 0 TO 2
 50 FOR J = 0 TO 2
 60 LET M(I, J) = I * 3 + J + 1
 70 NEXT J
 80 NEXT I
-90 REM Afficher quelques elements
+90 REM Display some elements
 100 PRINT "M(0,0) =", M(0, 0)
 110 PRINT "M(1,1) =", M(1, 1)
 120 PRINT "M(2,2) =", M(2, 2)
 130 END
 ```
 
-### Exemple 15: Matrice identité
+### Example 15: Identity matrix
 ```basic
-10 REM Creer une matrice identite 3x3
+10 REM Create a 3x3 identity matrix
 20 DIM ID(3, 3)
 30 FOR I = 0 TO 2
 40 FOR J = 0 TO 2
@@ -352,14 +352,14 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 60 IF I <> J THEN LET ID(I, J) = 0
 70 NEXT J
 80 NEXT I
-90 PRINT "Diagonale:"
+90 PRINT "Diagonal:"
 100 PRINT ID(0, 0), ID(1, 1), ID(2, 2)
 110 END
 ```
 
-### Exemple 16: Tableau 3D (cube)
+### Example 16: 3D array (cube)
 ```basic
-10 REM Tableau 3D - Cube 2x2x2
+10 REM 3D array - 2x2x2 cube
 20 DIM CUBE(2, 2, 2)
 30 FOR I = 0 TO 1
 40 FOR J = 0 TO 1
@@ -373,7 +373,7 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 120 END
 ```
 
-### Exemple 17: Fonctions mathématiques
+### Example 17: Math functions
 ```basic
 10 LET PI = 3.14159
 20 LET A = SIN(PI)
@@ -389,36 +389,36 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 120 END
 ```
 
-### Exemple 18: Cercle trigonométrique
+### Example 18: Trigonometric circle
 ```basic
 10 LET PI = 3.14159
 20 FOR ANGLE = 0 TO 360 STEP 45
-30 LET RAD = ANGLE * PI / 180
-40 LET X = COS(RAD)
-50 LET Y = SIN(RAD)
+30 LET R = ANGLE * PI / 180
+40 LET X = COS(R)
+50 LET Y = SIN(R)
 60 PRINT "Angle", ANGLE, "-> X=", X, "Y=", Y
 70 NEXT ANGLE
 80 END
 ```
 
-### Exemple 19: Sous-routine simple
+### Example 19: Simple subroutine
 ```basic
-10 PRINT "Programme principal"
+10 PRINT "Main program"
 20 GOSUB 100
-30 PRINT "Retour au principal"
+30 PRINT "Back in main"
 40 END
-100 REM Sous-routine
-110 PRINT "Dans la sous-routine"
+100 REM Subroutine
+110 PRINT "Inside subroutine"
 120 RETURN
 ```
 
-### Exemple 20: Sous-routine de calcul
+### Example 20: Calculation subroutine
 ```basic
 10 LET N = 5
 20 GOSUB 100
-30 PRINT "Factorielle de 5 =", FACT
+30 PRINT "Factorial of 5 =", FACT
 40 END
-100 REM Calcul de factorielle
+100 REM Factorial calculation
 110 LET FACT = 1
 120 FOR I = 1 TO N
 130 LET FACT = FACT * I
@@ -426,49 +426,49 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 150 RETURN
 ```
 
-### Exemple 21: Chaînes de caractères
+### Example 21: Strings
 ```basic
-10 LET NOM = "Alice"
-20 LET PRENOM = "Bob"
-30 PRINT "Nom:", NOM
-40 PRINT "Prenom:", PRENOM
-50 LET L = LEN(NOM)
-60 PRINT "Longueur du nom:", L
+10 LET NAME$ = "Alice"
+20 LET OTHER$ = "Bob"
+30 PRINT "Name:", NAME$
+40 PRINT "Other:", OTHER$
+50 LET L = LEN(NAME$)
+60 PRINT "Name length:", L
 70 LET C = ASC("A")
-80 PRINT "Code ASCII de A:", C
+80 PRINT "ASCII code of A:", C
 90 END
 ```
 
-### Exemple 22: Copie de chaînes
+### Example 22: Copying strings
 ```basic
-10 LET MESSAGE = "Hello World"
-20 LET COPIE = MESSAGE
-30 PRINT "Original:", MESSAGE
-40 PRINT "Copie:", COPIE
-50 PRINT "Longueur:", LEN(COPIE)
+10 LET MESSAGE$ = "Hello World"
+20 LET COPY$ = MESSAGE$
+30 PRINT "Original:", MESSAGE$
+40 PRINT "Copy:", COPY$
+50 PRINT "Length:", LEN(COPY$)
 60 END
 ```
 
-### Exemple 23: Avec GOTO
+### Example 23: Using GOTO
 ```basic
 10 LET X = 1
-20 PRINT "Compte:", X
+20 PRINT "Count:", X
 30 LET X = X + 1
 40 IF X < 5 THEN GOTO 20
-50 PRINT "Fin!"
+50 PRINT "Done!"
 60 END
 ```
 
-### Exemple 24: Concaténation de chaînes
+### Example 24: String concatenation
 ```basic
 10 LET A$ = "Hello" + " " + "World"
 20 LET B$ = LEFT$("PROG", 2) + RIGHT$("RAM", 2)
 30 PRINT "Phrase:", A$
-40 PRINT "Fusion:", B$
+40 PRINT "Merged:", B$
 50 END
 ```
 
-### Exemple 25: Fonctions mathématiques avancées
+### Example 25: Advanced math functions
 ```basic
 10 LET E = EXP(1)
 20 LET L = LOG(E)
@@ -481,7 +481,7 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 90 END
 ```
 
-### Exemple 26: Fonctions hyperboliques
+### Example 26: Hyperbolic functions
 ```basic
 10 LET S = SINH(0)
 20 LET C = COSH(0)
@@ -494,157 +494,157 @@ S'exécutent immédiatement (ex: `PRINT "Bonjour"`)
 90 END
 ```
 
-### Exemple 27: Utilisation des degres et radians
+### Example 27: Degrees and radians
 ```basic
 10 LET ANGLE = 90
-20 REM Convertir degres en radians pour SIN
+20 REM Convert degrees to radians for SIN
 30 LET S = SIN(RAD(ANGLE))
-40 PRINT "SIN(90 degres) =", S
-50 REM Convertir resultat inverse en degres
+40 PRINT "SIN(90 degrees) =", S
+50 REM Convert inverse result to degrees
 60 LET A = ASIN(1)
 70 LET D = DEG(A)
-80 PRINT "ASIN(1) en degres =", D
+80 PRINT "ASIN(1) in degrees =", D
 90 END
 ```
 
-### Exemple 28: DATA, READ et RESTORE
+### Example 28: DATA, READ and RESTORE
 ```basic
 10 DATA 100, 200, 300, 400, 500
 20 READ A, B, C
-30 PRINT "Premiers nombres:", A, B, C
+30 PRINT "First numbers:", A, B, C
 40 RESTORE
 50 READ X, Y
-60 PRINT "Apres RESTORE:", X, Y
+60 PRINT "After RESTORE:", X, Y
 70 END
 ```
 
-### Exemple 29: DATA avec chaînes
+### Example 29: DATA with strings
 ```basic
 10 DATA "Alice", "Bob", "Charlie"
 20 DATA 25, 30, 35
-30 READ NOM1$, NOM2$, NOM3$
+30 READ NAME1$, NAME2$, NAME3$
 40 READ AGE1, AGE2, AGE3
-50 PRINT NOM1$, "a", AGE1, "ans"
-60 PRINT NOM2$, "a", AGE2, "ans"
-70 PRINT NOM3$, "a", AGE3, "ans"
+50 PRINT NAME1$, "is", AGE1, "years old"
+60 PRINT NAME2$, "is", AGE2, "years old"
+70 PRINT NAME3$, "is", AGE3, "years old"
 80 END
 ```
 
-### Exemple 30: RESTORE avec numéro de ligne
+### Example 30: RESTORE with a line number
 ```basic
 10 DATA 1, 2, 3
 20 DATA 4, 5, 6
 30 READ A, B
-40 PRINT "De la ligne 10:", A, B
+40 PRINT "From line 10:", A, B
 50 RESTORE 20
 60 READ X, Y
-70 PRINT "De la ligne 20:", X, Y
+70 PRINT "From line 20:", X, Y
 80 END
 ```
 
-### Exemple 31: Utiliser l'aide interactive
+### Example 31: Using interactive help
 ```
 > HELP
-=== BASIC80 - Commandes disponibles ===
+=== BASIC80 - Available commands ===
 
-Commandes de base:
-  PRINT    - Afficher du texte ou des valeurs
-  LET      - Assigner une valeur a une variable
-  INPUT    - Saisir une valeur au clavier
-  REM      - Ajouter un commentaire
+Basic commands:
+  PRINT    - Display text or values
+  LET      - Assign a value to a variable
+  INPUT    - Read a value from the keyboard
+  REM      - Add a comment
   ...
 
-Tapez HELP [COMMANDE] pour plus de details.
-Exemple: HELP PRINT
+Type HELP [COMMAND] for more details.
+Example: HELP PRINT
 
 > HELP PRINT
 === PRINT ===
 
-Syntaxe: PRINT [expression [,|; expression]...]
+Syntax: PRINT [expression [,|; expression]...]
 
 Description:
-  Affiche une ou plusieurs expressions a l'ecran.
-  Les expressions peuvent etre numeriques ou des chaines.
+  Outputs one or more expressions to the screen.
+  Expressions can be numeric or string.
 
-Separateurs:
-  , (virgule)      : Tabulation entre expressions
-  ; (point-virgule): Pas d'espace entre expressions
-  Fin de ligne     : Retour a la ligne automatique
+Separators:
+  , (comma)        : Space between expressions
+  ; (semicolon)    : No space between expressions
+  End of line      : Automatic newline
 
-Exemples:
-  PRINT "Hello"           -> Affiche: Hello
-  PRINT 42                -> Affiche: 42.00
-  PRINT A, B              -> Affiche: 10.00 20.00
-  PRINT "X="; X           -> Affiche: X=5.00
+Examples:
+  PRINT "Hello"           -> Outputs: Hello
+  PRINT 42                -> Outputs: 42.00
+  PRINT A, B              -> Outputs: 10.00 20.00
+  PRINT "X="; X           -> Outputs: X=5.00
 
 > HELP FOR
 === FOR / NEXT ===
 
-Syntaxe: FOR variable = debut TO fin [STEP increment]
-         ... instructions ...
-         NEXT [variable]
+Syntax: FOR variable = start TO end [STEP increment]
+        ... statements ...
+        NEXT [variable]
 
 Description:
-  Boucle avec compteur.
-  STEP est optionnel (par defaut 1).
+  Counter loop.
+  STEP is optional (default 1).
 ```
 
-### Exemple 32: Sauvegarder et charger un programme
+### Example 32: Save and load a program
 ```
-> 10 PRINT "Programme exemple"
+> 10 PRINT "Sample program"
 > 20 FOR I = 1 TO 3
-> 30 PRINT "Compteur:", I
+> 30 PRINT "Counter:", I
 > 40 NEXT I
 > 50 END
 > LIST
-10 PRINT "Programme exemple"
+10 PRINT "Sample program"
 20 FOR I = 1 TO 3
-30 PRINT "Compteur:", I
+30 PRINT "Counter:", I
 40 NEXT I
 50 END
-> SAVE "monprog.bas"
-Programme sauvegardé dans 'monprog.bas'.
+> SAVE "myprog.bas"
+Program saved to 'myprog.bas'.
 > NEW
-Programme effacé.
-> LOAD "monprog.bas"
-Programme chargé depuis 'monprog.bas'.
+Program cleared.
+> LOAD "myprog.bas"
+Program loaded from 'myprog.bas'.
 > RUN
-Programme exemple
-Compteur: 1
-Compteur: 2
-Compteur: 3
+Sample program
+Counter: 1
+Counter: 2
+Counter: 3
 ```
 
 ## Architecture
 
-Le projet est organisé comme suit :
-- **src/** : Code source (`.c`)
-- **include/** : En-têtes (`.h`)
-- **tests/** : Tests unitaires et fichiers de données de test
-- **docs/** : Documentation supplémentaire
+The project is organised as follows:
+- **src/** : Source files (`.c`)
+- **include/** : Headers (`.h`)
+- **tests/** : Unit tests and test data files
+- **docs/** : Additional documentation
 
-### Fichiers sources (src/):
-- **main.c** - Programme principal et boucle interactive
-- **interpreter.c** - Noyau de l'interpréteur et orchestration
-- **commands.c** - Commandes BASIC (PRINT, LET, DIM, INPUT)
-- **control_flow.c** - Gestion du flux de contrôle (IF/FOR/GOTO/GOSUB)
-- **expression.c** - Évaluation des expressions arithmétiques et chaînes
-- **variables.c** - Gestion des variables et tableaux multi-dimensionnels
-- **lexer.c** - Analyse lexicale et tokenisation
+### Source files (src/):
+- **main.c** - Main entry point and interactive loop
+- **interpreter.c** - Interpreter core and orchestration
+- **commands.c** - BASIC commands (PRINT, LET, DIM, INPUT)
+- **control_flow.c** - Control flow handling (IF/FOR/GOTO/GOSUB)
+- **expression.c** - Arithmetic and string expression evaluation
+- **variables.c** - Variable and multi-dimensional array management
+- **lexer.c** - Lexical analysis and tokenisation
 
-### Composants:
-1. **Lexer** - Tokenise le code source (53 mots-clés, 73 types de tokens)
-2. **Variables** - Gestion variables numériques, chaînes, tableaux jusqu'à 10 dimensions
-3. **Expression** - Évaluation avec priorité des opérateurs, fonctions mathématiques et chaînes
-4. **Control Flow** - Gestion IF/THEN/ELSE, FOR/NEXT, GOTO, GOSUB/RETURN
-5. **Commands** - Exécution des commandes PRINT, LET, DIM, INPUT
-6. **Interpreter** - Orchestration minimale du programme BASIC
+### Components:
+1. **Lexer** - Tokenises source code (53 keywords, 73 token types)
+2. **Variables** - Manages numeric variables, strings, and arrays up to 10 dimensions
+3. **Expression** - Evaluation with operator precedence, math and string functions
+4. **Control Flow** - Handles IF/THEN/ELSE, FOR/NEXT, GOTO, GOSUB/RETURN
+5. **Commands** - Executes PRINT, LET, DIM, INPUT commands
+6. **Interpreter** - Minimal orchestration of the BASIC program
 
-## Limitations actuelles
+## Current limitations
 
-- Pas de gestion d'erreurs avancée
-- Les angles des fonctions trigonométriques sont en radians (utilisez RAD/DEG pour la conversion)
+- No advanced error handling
+- Angles for trigonometric functions are in radians (use RAD/DEG for conversion)
 
-## Extensions possibles
+## Possible extensions
 
-- Améliorer les diagnostics d'erreurs (ligne, colonne, message)
+- Improve error diagnostics (line, column, message)

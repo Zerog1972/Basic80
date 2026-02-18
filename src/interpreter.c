@@ -1,13 +1,27 @@
+/*
+ * interpreter.c - Core interpreter for the Basic80 BASIC interpreter
+ *
+ * Manages the program line list, the variable table, the FOR/NEXT loop
+ * stack, the GOSUB/RETURN call stack, and the DATA/READ/RESTORE pointer.
+ * Also provides the extension hook registry (custom numeric functions,
+ * string functions, and commands) used by embedding host applications.
+ *
+ * Main entry points:
+ *   createInterpreter()  - allocate and initialise an interpreter instance
+ *   runProgram()         - execute the loaded program
+ *   executeCommand()     - execute a single BASIC statement directly
+ *   freeInterpreter()    - release all resources
+ */
 #include "interpreter.h"
 #include "control_flow.h"
 #include "commands.h"
 
-/* ===== INTERPRÉTEUR ===== */
+/* ===== INTERPRETER ===== */
 
 Interpreter* createInterpreter(void) {
     Interpreter *interp = malloc(sizeof(Interpreter));
     if (!interp) {
-        fprintf(stderr, "Erreur: Allocation mémoire échouée pour l'interpréteur\n");
+        fprintf(stderr, "Error: Memory allocation failed for interpreter\n");
         return NULL;
     }
     interp->program = NULL;
@@ -29,15 +43,15 @@ Interpreter* createInterpreter(void) {
 
 const char* getErrorTypeName(ErrorType type) {
     switch (type) {
-        case ERR_SYNTAX:         return "Syntaxe";
-        case ERR_RUNTIME:        return "Exécution";
+        case ERR_SYNTAX:         return "Syntax";
+        case ERR_RUNTIME:        return "Runtime";
         case ERR_TYPE_MISMATCH:  return "Type";
-        case ERR_OUT_OF_DATA:    return "Données";
-        case ERR_DIVISION_ZERO:  return "Division";
+        case ERR_OUT_OF_DATA:    return "Data";
+        case ERR_DIVISION_ZERO:  return "DivisionByZero";
         case ERR_UNDEFINED_VAR:  return "Variable";
-        case ERR_ARRAY_BOUNDS:   return "Tableau";
-        case ERR_OUT_OF_MEMORY:  return "Mémoire";
-        default:                 return "Inconnue";
+        case ERR_ARRAY_BOUNDS:   return "Array";
+        case ERR_OUT_OF_MEMORY:  return "Memory";
+        default:                 return "Unknown";
     }
 }
 
@@ -50,19 +64,19 @@ void reportErrorEx(Interpreter *interp, ErrorType type, int column, const char *
     interp->lastErrorType = type;
     interp->errorColumn = column;
     
-    /* Affichage formaté de l'erreur */
+    /* Formatted error output */
     if (interp->currentLine) {
-        printf("\n[ERREUR %s] Ligne %d", getErrorTypeName(type), interp->currentLine->lineNum);
+        printf("\n[ERROR %s] Line %d", getErrorTypeName(type), interp->currentLine->lineNum);
         if (column >= 0) {
-            printf(", colonne %d", column);
+            printf(", column %d", column);
         }
         printf(": %s\n", message);
         
-        /* Afficher le code de la ligne */
+        /* Print the source line */
         if (interp->currentLine->code) {
             printf("  --> %s\n", interp->currentLine->code);
             
-            /* Afficher un curseur si la colonne est connue */
+            /* Print a caret cursor if the column is known */
             if (column >= 0) {
                 int i;
                 printf("      ");
@@ -73,7 +87,7 @@ void reportErrorEx(Interpreter *interp, ErrorType type, int column, const char *
             }
         }
     } else {
-        printf("\n[ERREUR %s]: %s\n", getErrorTypeName(type), message);
+        printf("\n[ERROR %s]: %s\n", getErrorTypeName(type), message);
     }
 }
 
@@ -127,7 +141,7 @@ void freeInterpreter(Interpreter *interp) {
         callFrame = nextCall;
     }
     
-    /* Libérer les données DATA */
+    /* Liberate DATA list */
     {
         DataItem *dataItem = interp->dataList;
         DataItem *nextData;
@@ -139,7 +153,7 @@ void freeInterpreter(Interpreter *interp) {
         }
     }
     
-    /* Libérer les hooks personnalisés */
+    /* Free custom extension hooks */
     {
         CustomNumFunc *numFunc = interp->customNumFuncs;
         CustomNumFunc *nextNum;
@@ -205,30 +219,30 @@ void addLine(Interpreter *interp, int lineNum, const char *code) {
         }
         
         if (current->next && current->next->lineNum == lineNum) {
-            /* Remplacer une ligne existante */
+            /* Replace an existing line with the same number */
             free(current->next->code);
             current->next->code = malloc(strlen(code) + 1);
             strcpy(current->next->code, code);
             free(newLine->code);
             free(newLine);
         } else {
-            /* Insérer une nouvelle ligne */
+            /* Insert a new line into the sorted list */
             newLine->next = current->next;
             current->next = newLine;
         }
     }
 }
 
-/* Supprimer une ligne du programme */
+/* Delete a line from the program by its line number */
 void deleteLine(Interpreter *interp, int lineNum) {
     Line *current;
     Line *toDelete;
     
     if (!interp->program) {
-        return; /* Programme vide */
+        return; /* Program is empty */
     }
     
-    /* Supprimer la première ligne */
+    /* Check if the line to delete is the first one */
     if (interp->program->lineNum == lineNum) {
         toDelete = interp->program;
         interp->program = interp->program->next;
@@ -237,13 +251,13 @@ void deleteLine(Interpreter *interp, int lineNum) {
         return;
     }
     
-    /* Chercher la ligne à supprimer */
+    /* Search for the line to delete */
     current = interp->program;
     while (current->next && current->next->lineNum != lineNum) {
         current = current->next;
     }
     
-    /* Si trouvée, la supprimer */
+    /* If found, unlink and free it */
     if (current->next && current->next->lineNum == lineNum) {
         toDelete = current->next;
         current->next = toDelete->next;
@@ -252,14 +266,14 @@ void deleteLine(Interpreter *interp, int lineNum) {
     }
 }
 
-/* Exécute une instruction unique (sans ':') */
+/* Execute a single statement (no ':' separator processing) */
 static void executeSingleStatement(Interpreter *interp, const char *stmt) {
     Token *tokens;
     
     tokens = tokenize(stmt);
     
-    /* Ligne vide ou commentaire */
     if (tokens[0].type == TOK_EOF || tokens[0].type == TOK_REM) {
+        /* Empty statement or comment: nothing to do */
         freeTokens(tokens);
         return;
     }
@@ -280,8 +294,8 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
         handleRead(interp, tokens);
     }
     else if (tokens[0].type == TOK_DATA) {
-        /* DATA ne peut être exécuté en mode direct, seulement dans un programme */
-        printf("Erreur: DATA ne peut être utilisé qu'à l'intérieur d'un programme.\n");
+        /* DATA cannot be executed in direct mode; only valid inside a running program */
+        printf("Error: DATA can only be used inside a program.\n");
     }
     else if (tokens[0].type == TOK_RESTORE) {
         handleRestore(interp, tokens);
@@ -290,21 +304,21 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
         handleHelp(interp, tokens);
     }
     else if (tokens[0].type == TOK_FOR) {
-        /* FOR ne s'exécute que dans runProgram */
-        printf("Erreur: FOR ne peut être utilisé qu'à l'intérieur d'un programme.\n");
+        /* FOR loops are only valid inside a running program */
+        printf("Error: FOR can only be used inside a program.\n");
     }
     else if (tokens[0].type == TOK_NEXT) {
-        /* NEXT ne s'exécute que dans runProgram */
-        printf("Erreur: NEXT ne peut être utilisé qu'à l'intérieur d'un programme.\n");
+        /* NEXT is only valid inside a running program */
+        printf("Error: NEXT can only be used inside a program.\n");
     }
     else if (tokens[0].type == TOK_IDENTIFIER) {
-        /* Affectation implicite sans LET : V = 5 ou V(1) = 5 */
+        /* Implicit assignment without LET: e.g. V = 5 or V(1) = 5 */
         handleLet(interp, tokens);
     }
     else if (tokens[0].type == TOK_IF || tokens[0].type == TOK_GOTO || 
              tokens[0].type == TOK_GOSUB || tokens[0].type == TOK_RETURN ||
              tokens[0].type == TOK_END) {
-        printf("Erreur: %s ne peut être utilisé qu'à l'intérieur d'un programme.\n", tokens[0].value);
+        printf("Error: %s can only be used inside a program.\n", tokens[0].value);
     }
     else {
         /* Vérifier si c'est une commande personnalisée */
@@ -312,7 +326,8 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
         if (customCmd) {
             customCmd(interp, tokens);
         } else {
-            printf("Erreur: Commande non reconnue '%s'.\n", 
+            /* Unknown command */
+            printf("Error: Unknown command '%s'.\n", 
                    tokens[0].value ? tokens[0].value : "");
         }
     }
@@ -320,7 +335,7 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
     freeTokens(tokens);
 }
 
-/* Libère le tableau de chaînes */
+/* Free the array of statement strings produced by splitByColon() */
 static void freeSplitArray(char **parts, int count) {
     int i;
     for (i = 0; i < count; i++) {
@@ -329,7 +344,7 @@ static void freeSplitArray(char **parts, int count) {
     free(parts);
 }
 
-/* Divise une ligne par ':' mais ignore les ':' après REM et dans les chaînes */
+/* Split a source line by ':' while ignoring colons inside strings or after REM */
 static char** splitByColon(const char *line, int *count) {
     char **parts;
     char *lineCopy;
@@ -356,7 +371,7 @@ static char** splitByColon(const char *line, int *count) {
     isInRem = 0;
     isInString = 0;
     
-    /* Vérifier si la ligne commence par REM */
+    /* Check if the line starts with a REM statement */
     while (*p && isspace(*p)) p++;
     if (strncmp(p, "REM", 3) == 0 && (p[3] == ' ' || p[3] == '\0')) {
         isInRem = 1;
@@ -364,7 +379,7 @@ static char** splitByColon(const char *line, int *count) {
     
     p = start;
     while (*p) {
-        /* Gérer les guillemets */
+        /* Track whether we are inside a quoted string */
         if (*p == '"' && !isInRem) {
             isInString = !isInString;
             p++;
@@ -372,7 +387,7 @@ static char** splitByColon(const char *line, int *count) {
         }
         
         if (*p == ':' && !isInRem && !isInString) {
-            /* Trouver un ':' hors REM et hors chaîne */
+            /* Found a ':' outside a string and not after REM: split here */
             *p = '\0';
             if (*count >= capacity) {
                 char **newParts;
@@ -406,7 +421,7 @@ static char** splitByColon(const char *line, int *count) {
         }
     }
     
-    /* Ajouter la dernière partie */
+    /* Store the last (or only) segment */
     if (*count >= capacity) {
         char **newParts;
         capacity++;
@@ -431,7 +446,7 @@ static char** splitByColon(const char *line, int *count) {
     return parts;
 }
 
-/* Exécuter une ligne de commande (peut contenir plusieurs instructions séparées par ':') */
+/* Execute a BASIC line, handling ':'-separated multiple statements */
 void executeCommand(Interpreter *interp, const char *line) {
     char **parts;
     int count;
@@ -440,7 +455,7 @@ void executeCommand(Interpreter *interp, const char *line) {
     parts = splitByColon(line, &count);
     
     for (i = 0; i < count; i++) {
-        /* Ignorer les espaces au début */
+        /* Skip leading whitespace before each statement */
         char *stmt = parts[i];
         while (*stmt && isspace(*stmt)) stmt++;
         
@@ -452,14 +467,15 @@ void executeCommand(Interpreter *interp, const char *line) {
     freeSplitArray(parts, count);
 }
 
-/* Exécute une instruction dans le contexte de runProgram (gestion des structures de contrôle) */
+/* Execute one statement inside runProgram(), handling control-flow tokens.
+ * Returns: -1 = END encountered, 1 = flow changed (GOTO/IF/FOR/etc.), 0 = normal */
 static int executeStatementInProgram(Interpreter *interp, const char *stmt, Line **line) {
     Token *tokens;
     
     tokens = tokenize(stmt);
     
     if (tokens[0].type == TOK_DATA) {
-        /* DATA a déjà été traité dans la première passe, ignorer ici */
+        /* DATA items are collected in the first pass; skip here */
         freeTokens(tokens);
         return 0;
     }
@@ -470,39 +486,39 @@ static int executeStatementInProgram(Interpreter *interp, const char *stmt, Line
     else if (tokens[0].type == TOK_IF) {
         if (handleIfStatement(interp, tokens, line)) {
             freeTokens(tokens);
-            return 1; /* Contrôle de flux géré */
+            return 1; /* Control flow handled */
         }
     }
     else if (tokens[0].type == TOK_GOTO) {
         if (handleGoto(interp, tokens, line)) {
             freeTokens(tokens);
-            return 1; /* Contrôle de flux géré */
+            return 1; /* Control flow handled */
         }
     }
     else if (tokens[0].type == TOK_GOSUB) {
         if (handleGosub(interp, tokens, line)) {
             freeTokens(tokens);
-            return 1; /* Contrôle de flux géré */
+            return 1; /* Control flow handled */
         }
     }
     else if (tokens[0].type == TOK_RETURN) {
         if (handleReturn(interp, line)) {
             freeTokens(tokens);
-            return 1; /* Contrôle de flux géré */
+            return 1; /* Control flow handled */
         }
     }
     else if (tokens[0].type == TOK_FOR) {
         if (handleFor(interp, tokens, line)) {
             freeTokens(tokens);
-            return 1; /* Contrôle de flux géré */
+            return 1; /* Control flow handled */
         }
     }
     else if (tokens[0].type == TOK_NEXT) {
         if (handleNext(interp)) {
-            /* Retourner à la ligne après le FOR */
+            /* Jump back to the line immediately after the matching FOR */
             *line = interp->forStack->startLine->next;
             freeTokens(tokens);
-            return 1; /* Contrôle de flux géré */
+            return 1; /* Control flow handled */
         }
     }
     else {
@@ -523,7 +539,7 @@ void runProgram(Interpreter *interp) {
     
     interp->hasError = 0;
     
-    /* Première passe : extraire toutes les données DATA */
+    /* First pass: collect all DATA items before any execution */
     line = interp->program;
     while (line) {
         /* Diviser la ligne par ':' en ignorant ceux dans REM */
@@ -547,29 +563,29 @@ void runProgram(Interpreter *interp) {
         line = line->next;
     }
     
-    /* Deuxième passe : exécuter le programme */
+    /* Second pass: execute the program */
     line = interp->program;
     while (line) {
         interp->currentLine = line;
         
-        /* Diviser la ligne par ':' en ignorant ceux dans REM */
+        /* Split each source line by ':' to handle multiple statements per line */
         parts = splitByColon(line->code, &count);
         
         for (i = 0; i < count && !interp->hasError; i++) {
-            /* Ignorer les espaces au début */
+            /* Skip leading whitespace */
             char *stmt = parts[i];
             while (*stmt && isspace(*stmt)) stmt++;
             
             if (*stmt) {
                 result = executeStatementInProgram(interp, stmt, &line);
                 if (result == -1) {
-                    /* END rencontré */
+                    /* END statement encountered: stop execution */
                     freeSplitArray(parts, count);
                     interp->currentLine = NULL;
                     return;
                 }
                 if (result == 1) {
-                    /* Contrôle de flux géré (GOTO, IF, FOR, etc.) */
+                    /* Control flow changed (GOTO, IF, FOR, etc.): restart at new line */
                     freeSplitArray(parts, count);
                     if (interp->hasError) {
                         interp->currentLine = NULL;
@@ -589,7 +605,7 @@ void runProgram(Interpreter *interp) {
     interp->currentLine = NULL;
 }
 
-/* Afficher le programme */
+/* List all lines of the loaded program to stdout */
 void listProgram(Interpreter *interp) {
     Line *line = interp->program;
     while (line) {
@@ -598,7 +614,7 @@ void listProgram(Interpreter *interp) {
     }
 }
 
-/* Effacer le programme */
+/* Remove all lines from the program (variables are preserved) */
 void clearProgram(Interpreter *interp) {
     Line *line = interp->program;
     Line *next;
@@ -613,14 +629,14 @@ void clearProgram(Interpreter *interp) {
     interp->program = NULL;
 }
 
-/* Sauvegarder le programme dans un fichier */
+/* Save the current program to a text file (one numbered line per row) */
 int saveProgram(Interpreter *interp, const char *filename) {
     FILE *file;
     Line *line;
     
     file = fopen(filename, "w");
     if (!file) {
-        printf("Erreur: Impossible d'ouvrir le fichier '%s' en écriture.\n", filename);
+        printf("Error: Cannot open file '%s' for writing.\n", filename);
         return 0;
     }
     
@@ -634,7 +650,7 @@ int saveProgram(Interpreter *interp, const char *filename) {
     return 1;
 }
 
-/* Charger un programme depuis un fichier */
+/* Load a program from a text file, replacing the current program */
 int loadProgram(Interpreter *interp, const char *filename) {
     FILE *file;
     char line[1024];
@@ -644,28 +660,28 @@ int loadProgram(Interpreter *interp, const char *filename) {
     
     file = fopen(filename, "r");
     if (!file) {
-        printf("Erreur: Impossible d'ouvrir le fichier '%s' en lecture.\n", filename);
+        printf("Error: Cannot open file '%s' for reading.\n", filename);
         return 0;
     }
     
-    /* Effacer le programme actuel */
+    /* Clear the current program before loading */
     clearProgram(interp);
     
     while (fgets(line, sizeof(line), file)) {
-        /* Retirer le newline */
+        /* Strip the trailing newline */
         line[strcspn(line, "\n")] = 0;
         
-        /* Ignorer les lignes vides */
+        /* Skip blank lines */
         if (strlen(line) == 0) continue;
         
-        /* Parser le numéro de ligne */
+        /* Parse the leading line number */
         lineNum = atoi(line);
         if (lineNum <= 0) {
-            printf("Attention: Ligne invalide ignorée: %s\n", line);
+            printf("Warning: Invalid line ignored: %s\n", line);
             continue;
         }
         
-        /* Trouver le début du code après le numéro */
+        /* Skip past the line number and any separating whitespace */
         p = line;
         while (*p && isdigit(*p)) p++;
         while (*p && isspace(*p)) p++;
@@ -681,7 +697,8 @@ int loadProgram(Interpreter *interp, const char *filename) {
 }
 
 /* ========================================================================
- * FONCTIONS POUR LE SYSTEME DE HOOKS/CALLBACKS
+ * EXTENSION HOOK REGISTRY (custom numeric functions, string functions,
+ * and commands callable from BASIC code)
  * ======================================================================== */
 
 int registerCustomNumericFunction(Interpreter *interp, const char *name, CustomNumericFunction handler) {
@@ -691,11 +708,11 @@ int registerCustomNumericFunction(Interpreter *interp, const char *name, CustomN
     
     if (!interp || !name || !handler) return 0;
     
-    /* Allouer la structure */
+    /* Allocate the registry entry */
     newFunc = (CustomNumFunc*)malloc(sizeof(CustomNumFunc));
     if (!newFunc) return 0;
     
-    /* Copier le nom en majuscules */
+    /* Duplicate and uppercase the function name */
     nameCopy = (char*)malloc(strlen(name) + 1);
     if (!nameCopy) {
         free(newFunc);
@@ -707,12 +724,12 @@ int registerCustomNumericFunction(Interpreter *interp, const char *name, CustomN
         nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
     }
     
-    /* Initialiser la structure */
+    /* Initialise and prepend to the list */
     newFunc->name = nameCopy;
     newFunc->handler = handler;
     newFunc->next = interp->customNumFuncs;
     
-    /* Ajouter en tete de liste */
+    /* Prepend to the list */
     interp->customNumFuncs = newFunc;
     
     return 1;
@@ -725,11 +742,11 @@ int registerCustomStringFunction(Interpreter *interp, const char *name, CustomSt
     
     if (!interp || !name || !handler) return 0;
     
-    /* Allouer la structure */
+    /* Allocate the registry entry */
     newFunc = (CustomStrFunc*)malloc(sizeof(CustomStrFunc));
     if (!newFunc) return 0;
     
-    /* Copier le nom en majuscules */
+    /* Duplicate and uppercase the function name */
     nameCopy = (char*)malloc(strlen(name) + 1);
     if (!nameCopy) {
         free(newFunc);
@@ -741,12 +758,12 @@ int registerCustomStringFunction(Interpreter *interp, const char *name, CustomSt
         nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
     }
     
-    /* Initialiser la structure */
+    /* Initialise and prepend to the list */
     newFunc->name = nameCopy;
     newFunc->handler = handler;
     newFunc->next = interp->customStrFuncs;
     
-    /* Ajouter en tete de liste */
+    /* Prepend to the list */
     interp->customStrFuncs = newFunc;
     
     return 1;
@@ -759,11 +776,11 @@ int registerCustomCommand(Interpreter *interp, const char *name, CustomCommandHa
     
     if (!interp || !name || !handler) return 0;
     
-    /* Allouer la structure */
+    /* Allocate the registry entry */
     newCmd = (CustomCommand*)malloc(sizeof(CustomCommand));
     if (!newCmd) return 0;
     
-    /* Copier le nom en majuscules */
+    /* Duplicate and uppercase the command name */
     nameCopy = (char*)malloc(strlen(name) + 1);
     if (!nameCopy) {
         free(newCmd);
@@ -775,12 +792,12 @@ int registerCustomCommand(Interpreter *interp, const char *name, CustomCommandHa
         nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
     }
     
-    /* Initialiser la structure */
+    /* Initialise and prepend to the list */
     newCmd->name = nameCopy;
     newCmd->handler = handler;
     newCmd->next = interp->customCommands;
     
-    /* Ajouter en tete de liste */
+    /* Prepend to the list */
     interp->customCommands = newCmd;
     
     return 1;
@@ -793,13 +810,13 @@ CustomNumericFunction findCustomNumericFunction(Interpreter *interp, const char 
     
     if (!interp || !name) return NULL;
     
-    /* Convertir le nom en majuscules pour la comparaison */
+    /* Convert the search name to uppercase for case-insensitive lookup */
     for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
         upperName[i] = (char)toupper((unsigned char)name[i]);
     }
     upperName[i] = '\0';
     
-    /* Parcourir la liste */
+    /* Walk the linked list */
     current = interp->customNumFuncs;
     while (current) {
         if (strcmp(current->name, upperName) == 0) {
@@ -818,13 +835,13 @@ CustomStringFunction findCustomStringFunction(Interpreter *interp, const char *n
     
     if (!interp || !name) return NULL;
     
-    /* Convertir le nom en majuscules pour la comparaison */
+    /* Convert the search name to uppercase for case-insensitive lookup */
     for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
         upperName[i] = (char)toupper((unsigned char)name[i]);
     }
     upperName[i] = '\0';
     
-    /* Parcourir la liste */
+    /* Walk the linked list */
     current = interp->customStrFuncs;
     while (current) {
         if (strcmp(current->name, upperName) == 0) {
@@ -843,13 +860,13 @@ CustomCommandHandler findCustomCommand(Interpreter *interp, const char *name) {
     
     if (!interp || !name) return NULL;
     
-    /* Convertir le nom en majuscules pour la comparaison */
+    /* Convert the search name to uppercase for case-insensitive lookup */
     for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
         upperName[i] = (char)toupper((unsigned char)name[i]);
     }
     upperName[i] = '\0';
     
-    /* Parcourir la liste */
+    /* Walk the linked list */
     current = interp->customCommands;
     while (current) {
         if (strcmp(current->name, upperName) == 0) {

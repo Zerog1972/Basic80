@@ -1,10 +1,18 @@
+/*
+ * lexer.c - Lexical analyser for the Basic80 interpreter
+ *
+ * Converts a raw BASIC source line into a flat array of typed Token
+ * structures.  Each token carries its type (from BasicTokenType), its
+ * string value and the source line number.  The array is terminated by
+ * a TOK_EOF sentinel and must be freed with freeTokens().
+ */
 #include "lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-/* Fonction privée pour vérifier si un mot est un mot-clé */
+/* Private helper: check whether a word matches a known BASIC keyword */
 static int isKeyword(const char *word, BasicTokenType *type) {
     if (strcmp(word, "PRINT") == 0) { *type = TOK_PRINT; return 1; }
     if (strcmp(word, "LET") == 0) { *type = TOK_LET; return 1; }
@@ -62,7 +70,7 @@ static int isKeyword(const char *word, BasicTokenType *type) {
     return 0;
 }
 
-/* Tokenize une ligne de code BASIC */
+/* Tokenize a single BASIC source line and return an array of Tokens */
 Token* tokenize(const char *line) {
     Token *tokens;
     int tokenCount;
@@ -76,7 +84,7 @@ Token* tokenize(const char *line) {
     
     tokens = malloc(sizeof(Token) * 256);
     if (tokens == NULL) {
-        fprintf(stderr, "Erreur: Allocation mémoire échouée pour les tokens\n");
+        fprintf(stderr, "Error: Memory allocation failed for token array\n");
         return NULL;
     }
     
@@ -85,13 +93,13 @@ Token* tokenize(const char *line) {
     len = strlen(line);
     
     while (i < len) {
-        /* Ignorer espaces */
+        /* Skip whitespace */
         while (i < len && isspace(line[i])) i++;
         if (i >= len) break;
         
-        /* Vérifier la limite de tokens */
+        /* Check token count limit to prevent buffer overflow */
         if (tokenCount >= 255) {
-            fprintf(stderr, "Erreur: Trop de tokens (limite: 255)\n");
+            fprintf(stderr, "Error: Too many tokens (limit: 255)\n");
             freeTokens(tokens);
             return NULL;
         }
@@ -99,22 +107,22 @@ Token* tokenize(const char *line) {
         tok = &tokens[tokenCount++];
         tok->lineNum = 0;
         
-        /* Chaînes de caractères */
+        /* String literals delimited by double quotes */
         if (line[i] == '"') {
             i++;
             start = i;
             while (i < len && line[i] != '"') i++;
             
             if (i >= len) {
-                fprintf(stderr, "Erreur: Chaîne non fermée\n");
-                tokenCount--; /* Annuler ce token */
+                fprintf(stderr, "Error: Unterminated string literal\n");
+                tokenCount--; /* Cancel this token */
                 break;
             }
             
             tok->type = TOK_STRING;
             tok->value = malloc(i - start + 1);
             if (tok->value == NULL) {
-                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                fprintf(stderr, "Error: Memory allocation failed\n");
                 freeTokens(tokens);
                 return NULL;
             }
@@ -122,33 +130,33 @@ Token* tokenize(const char *line) {
             tok->value[i - start] = '\0';
             i++;
         }
-        /* Nombres */
+        /* Numeric literals (integer or floating-point) */
         else if (isdigit(line[i])) {
             start = i;
             while (i < len && (isdigit(line[i]) || line[i] == '.')) i++;
             tok->type = TOK_NUMBER;
             tok->value = malloc(i - start + 1);
             if (tok->value == NULL) {
-                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                fprintf(stderr, "Error: Memory allocation failed\n");
                 freeTokens(tokens);
                 return NULL;
             }
             strncpy(tok->value, &line[start], i - start);
             tok->value[i - start] = '\0';
         }
-        /* Identifiants et mots-clés */
+        /* Identifiers and keywords */
         else if (isalpha(line[i])) {
             start = i;
             while (i < len && (isalnum(line[i]) || line[i] == '_')) i++;
             
-            /* Support du suffixe $ pour les variables chaine */
+            /* Support the $ suffix used by BASIC string variables */
             if (i < len && line[i] == '$') {
                 i++;
             }
             
             wordLen = i - start;
             if (wordLen >= 256) {
-                fprintf(stderr, "Erreur: Identifiant trop long (limite: 255)\n");
+                fprintf(stderr, "Error: Identifier too long (limit: 255)\n");
                 tokenCount--;
                 break;
             }
@@ -156,7 +164,7 @@ Token* tokenize(const char *line) {
             strncpy(word, &line[start], wordLen);
             word[wordLen] = '\0';
             
-            /* Convertir en majuscules */
+            /* Normalize the identifier to uppercase for case-insensitive matching */
             for (j = 0; j < wordLen; j++) word[j] = toupper(word[j]);
             
             if (!isKeyword(word, &tok->type)) {
@@ -164,17 +172,17 @@ Token* tokenize(const char *line) {
             }
             tok->value = malloc(strlen(word) + 1);
             if (tok->value == NULL) {
-                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                fprintf(stderr, "Error: Memory allocation failed\n");
                 freeTokens(tokens);
                 return NULL;
             }
             strcpy(tok->value, word);
         }
-        /* Opérateurs */
+        /* Single- or double-character operator symbols */
         else {
             tok->value = malloc(3);
             if (tok->value == NULL) {
-                fprintf(stderr, "Erreur: Allocation mémoire échouée\n");
+                fprintf(stderr, "Error: Memory allocation failed\n");
                 freeTokens(tokens);
                 return NULL;
             }
@@ -229,7 +237,7 @@ Token* tokenize(const char *line) {
     return tokens;
 }
 
-/* Libère la mémoire des tokens */
+/* Free all memory allocated for a token array produced by tokenize() */
 void freeTokens(Token *tokens) {
     int i;
     if (tokens == NULL) return;

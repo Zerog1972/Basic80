@@ -1,3 +1,13 @@
+/*
+ * control_flow.c - Control-flow statement handlers for Basic80
+ *
+ * Implements the runtime execution of all BASIC control-flow statements:
+ *   IF/THEN/ELSE, GOTO, GOSUB/RETURN, FOR/NEXT
+ *
+ * Each handler may modify *currentLine to redirect execution.  Returning
+ * 1 signals to runProgram() that the program counter has changed and the
+ * current line must be restarted from the new position.
+ */
 #include "control_flow.h"
 #include "expression.h"
 #include "variables.h"
@@ -5,8 +15,9 @@
 #include <string.h>
 #include <stdio.h>
 
-/* ===== FONCTIONS UTILITAIRES ===== */
+/* ===== UTILITY FUNCTIONS ===== */
 
+/* Find a program line by its line number; returns NULL if not found */
 Line* findLineByNumber(Interpreter *interp, int lineNum) {
     Line *line = interp->program;
     while (line && line->lineNum != lineNum) {
@@ -15,7 +26,7 @@ Line* findLineByNumber(Interpreter *interp, int lineNum) {
     return line;
 }
 
-/* Fonction pour reconstruire une commande à partir des tokens */
+/* Helper: reconstruct a BASIC statement string from a range of tokens */
 static void buildCommandFromTokens(Token *tokens, int startPos, int endPos, char *output) {
     int i;
     output[0] = '\0';
@@ -31,7 +42,7 @@ static void buildCommandFromTokens(Token *tokens, int startPos, int endPos, char
     }
 }
 
-/* ===== GESTION IF/THEN/ELSE ===== */
+/* ===== IF/THEN/ELSE HANDLING ===== */
 
 int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
     int condition;
@@ -62,7 +73,7 @@ int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
         }
         
         if (condition) {
-            /* Exécuter la partie THEN */
+            /* Execute the THEN branch */
             if (elsePos > 0) {
                 buildCommandFromTokens(tokens, thenPos, elsePos - 1, thenPart);
             } else {
@@ -82,7 +93,7 @@ int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
                 }
             }
         } else if (elsePos > 0) {
-            /* Exécuter la partie ELSE */
+            /* Execute the ELSE branch */
             buildCommandFromTokens(tokens, elsePos, 1000, elsePart);
             
             if (strlen(elsePart) > 0) {
@@ -103,7 +114,7 @@ int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
     return 0;
 }
 
-/* ===== GESTION GOTO ===== */
+/* ===== GOTO HANDLING ===== */
 
 int handleGoto(Interpreter *interp, Token *tokens, Line **currentLine) {
     int targetLine;
@@ -120,7 +131,7 @@ int handleGoto(Interpreter *interp, Token *tokens, Line **currentLine) {
     return 0;
 }
 
-/* ===== GESTION GOSUB/RETURN ===== */
+/* ===== GOSUB/RETURN HANDLING ===== */
 
 int handleGosub(Interpreter *interp, Token *tokens, Line **currentLine) {
     int targetLine;
@@ -131,17 +142,17 @@ int handleGosub(Interpreter *interp, Token *tokens, Line **currentLine) {
         targetLine = atoi(tokens[1].value);
         target = findLineByNumber(interp, targetLine);
         if (target) {
-            /* Empiler la ligne suivante pour le RETURN */
+            /* Push the return address (line after the GOSUB) onto the call stack */
             newCall = malloc(sizeof(CallStack));
             if (!newCall) {
-                reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Mémoire insuffisante pour GOSUB");
+                reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Out of memory for GOSUB");
                 return 0;
             }
             newCall->returnLine = (*currentLine)->next;
             newCall->next = interp->callStack;
             interp->callStack = newCall;
             
-            /* Sauter à la sous-routine */
+            /* Jump to the subroutine */
             *currentLine = target;
             return 1;
         }
@@ -162,7 +173,7 @@ int handleReturn(Interpreter *interp, Line **currentLine) {
     return 0;
 }
 
-/* ===== GESTION FOR/NEXT ===== */
+/* ===== FOR/NEXT HANDLING ===== */
 
 int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
     int pos;
@@ -192,7 +203,7 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
                 /* Vérifier si la boucle peut s'exécuter au moins une fois */
                 if ((stepVal > 0 && startVal > endVal) ||
                     (stepVal < 0 && startVal < endVal)) {
-                    /* Ne pas exécuter la boucle, sauter jusqu'au NEXT correspondant */
+                    /* Loop body would never execute: skip forward to the matching NEXT */
                     setVariable(interp, varName, startVal);
                     nestLevel = 1;
                     searchLine = (*currentLine)->next;
@@ -216,16 +227,16 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
                         return 1;
                     }
                 } else {
-                    /* Créer une nouvelle boucle FOR */
+                    /* Initial condition passes: push a new FOR loop entry */
                     forLoop = malloc(sizeof(ForLoop));
                     if (!forLoop) {
-                        reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Mémoire insuffisante pour FOR");
+                        reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Out of memory for FOR");
                         return 0;
                     }
                     forLoop->varName = malloc(strlen(varName) + 1);
                     if (!forLoop->varName) {
                         free(forLoop);
-                        reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Mémoire insuffisante pour FOR");
+                        reportErrorEx(interp, ERR_OUT_OF_MEMORY, 1, "Out of memory for FOR");
                         return 0;
                     }
                     strcpy(forLoop->varName, varName);
@@ -234,7 +245,7 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
                     forLoop->startLine = *currentLine;
                     forLoop->next = interp->forStack;
                     interp->forStack = forLoop;
-                    /* Initialiser la variable */
+                    /* Initialise the loop control variable */
                     setVariable(interp, varName, startVal);
                 }
             }
@@ -253,13 +264,13 @@ int handleNext(Interpreter *interp) {
         currentVal += forLoop->stepValue;
         setVariable(interp, forLoop->varName, currentVal);
         
-        /* Vérifier si la boucle doit continuer */
+        /* Check whether the loop should continue */
         if ((forLoop->stepValue > 0 && currentVal <= forLoop->endValue) ||
             (forLoop->stepValue < 0 && currentVal >= forLoop->endValue)) {
-            /* Retourner à la ligne après le FOR - retourne 1 pour indiquer qu'on doit continuer */
+            /* Loop continues: return 1 to signal FOR line re-entry */
             return 1;
         } else {
-            /* Sortir de la boucle */
+            /* Loop finished: pop the FOR entry */
             interp->forStack = forLoop->next;
             free(forLoop->varName);
             free(forLoop);
