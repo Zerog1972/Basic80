@@ -100,6 +100,7 @@ struct Interpreter {
     ForLoop *forStack;
     CallStack *callStack;
     DataItem *dataList;      /* Head of the DATA linked list              */
+    DataItem *dataListTail;  /* Tail of the DATA linked list (O(1) append) */
     DataItem *dataPointer;   /* Current READ position in the DATA list    */
     int hasError;
     ErrorType lastErrorType; /* Category of the most recent error         */

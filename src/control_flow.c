@@ -26,20 +26,28 @@ Line* findLineByNumber(Interpreter *interp, int lineNum) {
     return line;
 }
 
-/* Helper: reconstruct a BASIC statement string from a range of tokens */
+/* Helper: reconstruct a BASIC statement string from a range of tokens.
+ * Uses a running pointer to avoid the O(n²) cost of strcat in a loop. */
 static void buildCommandFromTokens(Token *tokens, int startPos, int endPos, char *output) {
     int i;
-    output[0] = '\0';
+    char *p = output;
+    size_t vlen;
+    *p = '\0';
     for (i = startPos; i < endPos && tokens[i].type != TOK_EOF; i++) {
-        if (i > startPos) strcat(output, " ");
+        if (i > startPos) *p++ = ' ';
         if (tokens[i].type == TOK_STRING) {
-            strcat(output, "\"");
-            strcat(output, tokens[i].value);
-            strcat(output, "\"");
+            *p++ = '"';
+            vlen = strlen(tokens[i].value);
+            memcpy(p, tokens[i].value, vlen);
+            p += vlen;
+            *p++ = '"';
         } else {
-            strcat(output, tokens[i].value);
+            vlen = strlen(tokens[i].value);
+            memcpy(p, tokens[i].value, vlen);
+            p += vlen;
         }
     }
+    *p = '\0';
 }
 
 /* ===== IF/THEN/ELSE HANDLING ===== */
@@ -80,7 +88,7 @@ int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
                 buildCommandFromTokens(tokens, thenPos, 1000, thenPart);
             }
             
-            if (strlen(thenPart) > 0) {
+            if (thenPart[0] != '\0') {
                 if (strncmp(thenPart, "GOTO ", 5) == 0) {
                     targetLine = atoi(&thenPart[5]);
                     target = findLineByNumber(interp, targetLine);
@@ -96,7 +104,7 @@ int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
             /* Execute the ELSE branch */
             buildCommandFromTokens(tokens, elsePos, 1000, elsePart);
             
-            if (strlen(elsePart) > 0) {
+            if (elsePart[0] != '\0') {
                 if (strncmp(elsePart, "GOTO ", 5) == 0) {
                     targetLine = atoi(&elsePart[5]);
                     target = findLineByNumber(interp, targetLine);

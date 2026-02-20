@@ -30,6 +30,7 @@ Interpreter* createInterpreter(void) {
     interp->forStack = NULL;
     interp->callStack = NULL;
     interp->dataList = NULL;
+    interp->dataListTail = NULL;
     interp->dataPointer = NULL;
     interp->hasError = 0;
     interp->lastErrorType = ERR_NONE;
@@ -190,11 +191,12 @@ void freeInterpreter(Interpreter *interp) {
 void addLine(Interpreter *interp, int lineNum, const char *code) {
     Line *newLine;
     Line *current;
+    size_t codeLen = strlen(code);  /* Calculé une seule fois */
     
     newLine = malloc(sizeof(Line));
     if (!newLine) return;
     newLine->lineNum = lineNum;
-    newLine->code = malloc(strlen(code) + 1);
+    newLine->code = malloc(codeLen + 1);
     if (!newLine->code) {
         free(newLine);
         return;
@@ -208,7 +210,7 @@ void addLine(Interpreter *interp, int lineNum, const char *code) {
     } else if (interp->program->lineNum == lineNum) {
         /* Remplacer la première ligne */
         free(interp->program->code);
-        interp->program->code = malloc(strlen(code) + 1);
+        interp->program->code = malloc(codeLen + 1);
         strcpy(interp->program->code, code);
         free(newLine->code);
         free(newLine);
@@ -221,7 +223,7 @@ void addLine(Interpreter *interp, int lineNum, const char *code) {
         if (current->next && current->next->lineNum == lineNum) {
             /* Replace an existing line with the same number */
             free(current->next->code);
-            current->next->code = malloc(strlen(code) + 1);
+            current->next->code = malloc(codeLen + 1);
             strcpy(current->next->code, code);
             free(newLine->code);
             free(newLine);
@@ -355,7 +357,7 @@ static char** splitByColon(const char *line, int *count) {
     int isInString;
     
     *count = 0;
-    capacity = 10;
+    capacity = 4;  /* La plupart des lignes BASIC ont <= 4 instructions */
     parts = malloc(sizeof(char*) * capacity);
     if (!parts) return NULL;
     
@@ -542,6 +544,12 @@ void runProgram(Interpreter *interp) {
     /* First pass: collect all DATA items before any execution */
     line = interp->program;
     while (line) {
+        /* Optimisation : ignorer les lignes sans le mot-clé DATA */
+        if (!strstr(line->code, "DATA")) {
+            line = line->next;
+            continue;
+        }
+        
         /* Diviser la ligne par ':' en ignorant ceux dans REM */
         parts = splitByColon(line->code, &count);
         
@@ -705,22 +713,25 @@ int registerCustomNumericFunction(Interpreter *interp, const char *name, CustomN
     CustomNumFunc *newFunc;
     char *nameCopy;
     size_t i;
+    size_t nameLen;
     
     if (!interp || !name || !handler) return 0;
+    
+    nameLen = strlen(name);  /* Calculé une seule fois */
     
     /* Allocate the registry entry */
     newFunc = (CustomNumFunc*)malloc(sizeof(CustomNumFunc));
     if (!newFunc) return 0;
     
     /* Duplicate and uppercase the function name */
-    nameCopy = (char*)malloc(strlen(name) + 1);
+    nameCopy = (char*)malloc(nameLen + 1);
     if (!nameCopy) {
         free(newFunc);
         return 0;
     }
     
     strcpy(nameCopy, name);
-    for (i = 0; i < strlen(nameCopy); i++) {
+    for (i = 0; i < nameLen; i++) {
         nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
     }
     
@@ -739,22 +750,25 @@ int registerCustomStringFunction(Interpreter *interp, const char *name, CustomSt
     CustomStrFunc *newFunc;
     char *nameCopy;
     size_t i;
+    size_t nameLen;
     
     if (!interp || !name || !handler) return 0;
+    
+    nameLen = strlen(name);  /* Calculé une seule fois */
     
     /* Allocate the registry entry */
     newFunc = (CustomStrFunc*)malloc(sizeof(CustomStrFunc));
     if (!newFunc) return 0;
     
     /* Duplicate and uppercase the function name */
-    nameCopy = (char*)malloc(strlen(name) + 1);
+    nameCopy = (char*)malloc(nameLen + 1);
     if (!nameCopy) {
         free(newFunc);
         return 0;
     }
     
     strcpy(nameCopy, name);
-    for (i = 0; i < strlen(nameCopy); i++) {
+    for (i = 0; i < nameLen; i++) {
         nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
     }
     
@@ -773,22 +787,25 @@ int registerCustomCommand(Interpreter *interp, const char *name, CustomCommandHa
     CustomCommand *newCmd;
     char *nameCopy;
     size_t i;
+    size_t nameLen;
     
     if (!interp || !name || !handler) return 0;
+    
+    nameLen = strlen(name);  /* Calculé une seule fois */
     
     /* Allocate the registry entry */
     newCmd = (CustomCommand*)malloc(sizeof(CustomCommand));
     if (!newCmd) return 0;
     
     /* Duplicate and uppercase the command name */
-    nameCopy = (char*)malloc(strlen(name) + 1);
+    nameCopy = (char*)malloc(nameLen + 1);
     if (!nameCopy) {
         free(newCmd);
         return 0;
     }
     
     strcpy(nameCopy, name);
-    for (i = 0; i < strlen(nameCopy); i++) {
+    for (i = 0; i < nameLen; i++) {
         nameCopy[i] = (char)toupper((unsigned char)nameCopy[i]);
     }
     
@@ -807,11 +824,14 @@ CustomNumericFunction findCustomNumericFunction(Interpreter *interp, const char 
     CustomNumFunc *current;
     char upperName[256];
     size_t i;
+    size_t nameLen;
     
     if (!interp || !name) return NULL;
     
+    nameLen = strlen(name);  /* Calculé une seule fois */
+    
     /* Convert the search name to uppercase for case-insensitive lookup */
-    for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
+    for (i = 0; i < nameLen && i < sizeof(upperName) - 1; i++) {
         upperName[i] = (char)toupper((unsigned char)name[i]);
     }
     upperName[i] = '\0';
@@ -832,11 +852,14 @@ CustomStringFunction findCustomStringFunction(Interpreter *interp, const char *n
     CustomStrFunc *current;
     char upperName[256];
     size_t i;
+    size_t nameLen;
     
     if (!interp || !name) return NULL;
     
+    nameLen = strlen(name);  /* Calculé une seule fois */
+    
     /* Convert the search name to uppercase for case-insensitive lookup */
-    for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
+    for (i = 0; i < nameLen && i < sizeof(upperName) - 1; i++) {
         upperName[i] = (char)toupper((unsigned char)name[i]);
     }
     upperName[i] = '\0';
@@ -857,11 +880,14 @@ CustomCommandHandler findCustomCommand(Interpreter *interp, const char *name) {
     CustomCommand *current;
     char upperName[256];
     size_t i;
+    size_t nameLen;
     
     if (!interp || !name) return NULL;
     
+    nameLen = strlen(name);  /* Calculé une seule fois */
+    
     /* Convert the search name to uppercase for case-insensitive lookup */
-    for (i = 0; i < strlen(name) && i < sizeof(upperName) - 1; i++) {
+    for (i = 0; i < nameLen && i < sizeof(upperName) - 1; i++) {
         upperName[i] = (char)toupper((unsigned char)name[i]);
     }
     upperName[i] = '\0';

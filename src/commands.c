@@ -286,7 +286,6 @@ void handleInput(Interpreter *interp, Token *tokens) {
 void handleData(Interpreter *interp, Token *tokens, int lineNum) {
     int pos;
     DataItem *newItem;
-    DataItem *last;
     char buffer[MAX_INPUT_BUFFER];
     
     pos = 1; /* Skip the DATA token */
@@ -308,15 +307,8 @@ void handleData(Interpreter *interp, Token *tokens, int lineNum) {
         newItem->next = NULL;
         
         /* Copy the value according to its token type */
-        if (tokens[pos].type == TOK_STRING) {
-            newItem->value = malloc(strlen(tokens[pos].value) + 1);
-            if (!newItem->value) {
-                free(newItem);
-                reportErrorEx(interp, ERR_OUT_OF_MEMORY, pos, "Out of memory for DATA");
-                return;
-            }
-            strcpy(newItem->value, tokens[pos].value);
-        } else if (tokens[pos].type == TOK_NUMBER) {
+        if (tokens[pos].type == TOK_STRING || tokens[pos].type == TOK_NUMBER) {
+            /* String and number literals share the same copy logic */
             newItem->value = malloc(strlen(tokens[pos].value) + 1);
             if (!newItem->value) {
                 free(newItem);
@@ -342,17 +334,14 @@ void handleData(Interpreter *interp, Token *tokens, int lineNum) {
             continue;
         }
         
-        /* Append to the end of the DATA linked list */
+        /* Append to the DATA linked list in O(1) via the tail pointer */
         if (!interp->dataList) {
             interp->dataList = newItem;
             interp->dataPointer = newItem;
         } else {
-            last = interp->dataList;
-            while (last->next) {
-                last = last->next;
-            }
-            last->next = newItem;
+            interp->dataListTail->next = newItem;
         }
+        interp->dataListTail = newItem;
         
         pos++;
     }
@@ -433,7 +422,7 @@ void handleRestore(Interpreter *interp, Token *tokens) {
     
     /* RESTORE with a line number argument */
     if (tokens[1].type == TOK_NUMBER) {
-        targetLine = (int)atof(tokens[1].value);
+        targetLine = atoi(tokens[1].value);  /* atoi suffit pour un numéro de ligne */
         
         /* Find the first DATA item at or after the given line */
         item = interp->dataList;

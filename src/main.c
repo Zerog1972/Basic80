@@ -18,6 +18,40 @@
 #include <windows.h>
 #endif
 
+/* Handle a SAVE or LOAD meta-command: extract the quoted filename and
+ * call saveProgram / loadProgram accordingly. */
+static void handleFileCommand(Interpreter *interp, const char *line, int isSave) {
+    const char *start;
+    const char *end;
+    char filename[256];
+    size_t len;
+
+    start = strchr(line, '"');
+    if (!start) {
+        printf("Error: Filename in quotes required (e.g. %s \"prog.bas\").\n",
+               isSave ? "SAVE" : "LOAD");
+        return;
+    }
+    start++;
+    end = strchr(start, '"');
+    if (!end) {
+        printf("Error: Missing closing quote.\n");
+        return;
+    }
+    len = (size_t)(end - start);
+    if (len >= sizeof(filename)) len = sizeof(filename) - 1;
+    memcpy(filename, start, len);
+    filename[len] = '\0';
+
+    if (isSave) {
+        if (saveProgram(interp, filename))
+            printf("Program saved to '%s'.\n", filename);
+    } else {
+        if (loadProgram(interp, filename))
+            printf("Program loaded from '%s'.\n", filename);
+    }
+}
+
 int main(void) {
     Interpreter *interp;
     char line[1024];
@@ -42,7 +76,7 @@ int main(void) {
         line[strcspn(line, "\n")] = 0;
         
         /* Skip blank input */
-        if (strlen(line) == 0) continue;
+        if (line[0] == '\0') continue;
         
         /* EXIT command: quit the interpreter loop */
         if (strcmp(line, "EXIT") == 0) {
@@ -78,54 +112,14 @@ int main(void) {
         }
         
         /* SAVE command: save the program to a file */
-        if (strncmp(line, "SAVE ", 5) == 0 || strncmp(line, "SAVE\"", 5) == 0) {
-            char *filename;
-            char *start;
-            char *end;
-            
-            /* Extract the filename from between double quotes */
-            start = strchr(line, '"');
-            if (start) {
-                start++;
-                end = strchr(start, '"');
-                if (end) {
-                    *end = '\0';
-                    filename = start;
-                    if (saveProgram(interp, filename)) {
-                        printf("Program saved to '%s'.\n", filename);
-                    }
-                } else {
-                    printf("Error: Missing closing quote.\n");
-                }
-            } else {
-                printf("Error: Filename in quotes required (e.g. SAVE \"prog.bas\").\n");
-            }
+        if (strncmp(line, "SAVE", 4) == 0 && (line[4] == ' ' || line[4] == '"')) {
+            handleFileCommand(interp, line, 1);
             continue;
         }
         
         /* LOAD command: load a program from a file */
-        if (strncmp(line, "LOAD ", 5) == 0 || strncmp(line, "LOAD\"", 5) == 0) {
-            char *filename;
-            char *start;
-            char *end;
-            
-            /* Extract the filename from between double quotes */
-            start = strchr(line, '"');
-            if (start) {
-                start++;
-                end = strchr(start, '"');
-                if (end) {
-                    *end = '\0';
-                    filename = start;
-                    if (loadProgram(interp, filename)) {
-                        printf("Program loaded from '%s'.\n", filename);
-                    }
-                } else {
-                    printf("Error: Missing closing quote.\n");
-                }
-            } else {
-                printf("Error: Filename in quotes required (e.g. LOAD \"prog.bas\").\n");
-            }
+        if (strncmp(line, "LOAD", 4) == 0 && (line[4] == ' ' || line[4] == '"')) {
+            handleFileCommand(interp, line, 0);
             continue;
         }
         

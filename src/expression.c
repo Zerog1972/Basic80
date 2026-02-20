@@ -17,6 +17,9 @@
 #include <string.h>
 #include <math.h>
 
+/* Pi constant shared by DEG and RAD handlers */
+#define BASIC_PI 3.14159265358979323846
+
 /* Returns 1 if the variable name ends with '$' (string variable convention) */
 static int isStringVariable(const char *name) {
     size_t len = strlen(name);
@@ -278,7 +281,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             arg = evaluateExpression(interp, tokens, pos);
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             /* Convert radians to degrees */
-            result = arg * 180.0 / 3.14159265358979323846;
+            result = arg * 180.0 / BASIC_PI;
         }
     } else if (tokens[*pos].type == TOK_RAD) {
         (*pos)++;
@@ -287,7 +290,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             arg = evaluateExpression(interp, tokens, pos);
             if (tokens[*pos].type == TOK_RPAREN) (*pos)++;
             /* Convert degrees to radians */
-            result = arg * 3.14159265358979323846 / 180.0;
+            result = arg * BASIC_PI / 180.0;
         }
     } else if (tokens[*pos].type == TOK_LEN) {
         /* LEN(string) - returns the number of characters in a string */
@@ -314,7 +317,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
             (*pos)++;
             if (tokens[*pos].type == TOK_STRING) {
                 str = tokens[*pos].value;
-                if (strlen(str) > 0) {
+                if (str[0] != '\0') {
                     result = (double)((unsigned char)str[0]);
                 }
                 (*pos)++;
@@ -322,7 +325,7 @@ double evaluateFactor(Interpreter *interp, Token *tokens, int *pos) {
                 strcpy(varName, tokens[*pos].value);
                 (*pos)++;
                 str = getStringVariable(interp, varName);
-                if (strlen(str) > 0) {
+                if (str[0] != '\0') {
                     result = (double)((unsigned char)str[0]);
                 }
             }
@@ -415,14 +418,15 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             if (result) result[0] = '\0';
         }
     } else if (tokens[*pos].type == TOK_STRING) {
-        result = (char*)malloc(strlen(tokens[*pos].value) + 1);
+        size_t vlen = strlen(tokens[*pos].value);
+        result = (char*)malloc(vlen + 1);
         if (result) {
-            strcpy(result, tokens[*pos].value);
+            memcpy(result, tokens[*pos].value, vlen + 1);
         } else {
             result = (char*)malloc(1);
             if (result) result[0] = '\0';
         }
-        (*pos)++;
+        (*pos)++;;
     } else if (tokens[*pos].type == TOK_IDENTIFIER) {
         CustomStringFunction customFunc;
         
@@ -572,7 +576,6 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         }
     } else if (tokens[*pos].type == TOK_SPACE) {
         /* SPACE$(n) - returns a string of n space characters */
-        int i;
         (*pos)++;
         if (tokens[*pos].type == TOK_LPAREN) {
             (*pos)++;
@@ -581,9 +584,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             if (n < 0) n = 0;
             result = (char*)malloc(n + 1);
             if (result) {
-                for (i = 0; i < n; i++) {
-                    result[i] = ' ';
-                }
+                memset(result, ' ', n);
                 result[n] = '\0';
             } else {
                 result = (char*)malloc(1);
@@ -592,7 +593,6 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
         }
     } else if (tokens[*pos].type == TOK_STRING_FUNC) {
         /* STRING$(n,c) - returns a string of n repetitions of character c */
-        int i;
         char c;
         (*pos)++;
         if (tokens[*pos].type == TOK_LPAREN) {
@@ -612,9 +612,7 @@ char* evaluateStringPrimary(Interpreter *interp, Token *tokens, int *pos) {
             if (n < 0) n = 0;
             result = (char*)malloc(n + 1);
             if (result) {
-                for (i = 0; i < n; i++) {
-                    result[i] = c;
-                }
+                memset(result, (unsigned char)c, n);
                 result[n] = '\0';
             } else {
                 result = (char*)malloc(1);
@@ -639,20 +637,20 @@ char* evaluateStringExpression(Interpreter *interp, Token *tokens, int *pos) {
     while (tokens[*pos].type == TOK_PLUS) {
         char *rhs;
         char *concat;
-        size_t len;
+        size_t llen, rlen;
         (*pos)++;
         rhs = evaluateStringPrimary(interp, tokens, pos);
-        len = strlen(result) + strlen(rhs) + 1;
-        concat = (char*)malloc(len);
+        llen = strlen(result);
+        rlen = strlen(rhs);
+        concat = (char*)malloc(llen + rlen + 1);
         if (concat) {
-            strcpy(concat, result);
-            strcat(concat, rhs);
+            memcpy(concat, result, llen);
+            memcpy(concat + llen, rhs, rlen + 1); /* +1 copies the '\0' */
         }
         free(result);
         free(rhs);
         result = concat ? concat : (char*)malloc(1);
         if (!result) {
-            /* Allocation failed: return an empty string */
             result = (char*)malloc(1);
             if (result) result[0] = '\0';
         }

@@ -12,6 +12,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Compute the flat (row-major) index from multi-dimensional indices.
+ * Returns -1 if any index is out of bounds. */
+static int computeFlatIndex(Variable *var, int *indices, int numIndices) {
+    int flatIndex = 0;
+    int i, j, multiplier;
+    for (i = 0; i < numIndices; i++) {
+        if (indices[i] < 0 || indices[i] >= var->dimensions[i]) {
+            return -1; /* Out of bounds */
+        }
+        multiplier = 1;
+        for (j = i + 1; j < numIndices; j++) {
+            multiplier *= var->dimensions[j];
+        }
+        flatIndex += indices[i] * multiplier;
+    }
+    return flatIndex;
+}
+
 /* Find a variable by name; returns NULL if not found */
 Variable* findVariable(Interpreter *interp, const char *name) {
     Variable *var = interp->variables;
@@ -26,6 +44,7 @@ Variable* findVariable(Interpreter *interp, const char *name) {
 void setVariable(Interpreter *interp, const char *name, double value) {
     Variable *var;
     Variable *newVar;
+    size_t nameLen;
     
     var = findVariable(interp, name);
     if (var) {
@@ -38,9 +57,10 @@ void setVariable(Interpreter *interp, const char *name, double value) {
             }
         }
     } else {
+        nameLen = strlen(name);  /* Calculé une seule fois */
         newVar = malloc(sizeof(Variable));
-        newVar->name = malloc(strlen(name) + 1);
-        strcpy(newVar->name, name);
+        newVar->name = malloc(nameLen + 1);
+        memcpy(newVar->name, name, nameLen + 1);
         newVar->value = value;
         newVar->isString = 0;
         newVar->strValue = NULL;
@@ -67,39 +87,44 @@ double getVariable(Interpreter *interp, const char *name) {
 void setStringVariable(Interpreter *interp, const char *name, const char *value) {
     Variable *var;
     Variable *newVar;
+    size_t nameLen;
+    size_t valueLen;
     
     var = findVariable(interp, name);
     if (var) {
         if (!var->isArray) {
+            valueLen = strlen(value);  /* Calculé une seule fois */
             if (var->strValue) {
                 free(var->strValue);
             }
-            var->strValue = malloc(strlen(value) + 1);
+            var->strValue = malloc(valueLen + 1);
             if (!var->strValue) {
                 var->strValue = NULL;
                 return;
             }
-            strcpy(var->strValue, value);
+            memcpy(var->strValue, value, valueLen + 1);
             var->isString = 1;
         }
     } else {
+        nameLen  = strlen(name);   /* Calculé une seule fois */
+        valueLen = strlen(value);  /* Calculé une seule fois */
         newVar = malloc(sizeof(Variable));
         if (!newVar) return;
-        newVar->name = malloc(strlen(name) + 1);
+        newVar->name = malloc(nameLen + 1);
         if (!newVar->name) {
             free(newVar);
             return;
         }
-        strcpy(newVar->name, name);
+        memcpy(newVar->name, name, nameLen + 1);
         newVar->value = 0.0;
         newVar->isString = 1;
-        newVar->strValue = malloc(strlen(value) + 1);
+        newVar->strValue = malloc(valueLen + 1);
         if (!newVar->strValue) {
             free(newVar->name);
             free(newVar);
             return;
         }
-        strcpy(newVar->strValue, value);
+        memcpy(newVar->strValue, value, valueLen + 1);
         newVar->isArray = 0;
         newVar->arrayValues = NULL;
         newVar->arraySize = 0;
@@ -125,6 +150,7 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
     Variable *newVar;
     int i;
     int totalSize;
+    size_t nameLen;
     
     /* Compute the total number of elements (product of all dimension sizes) */
     totalSize = 1;
@@ -149,29 +175,26 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
             var->isArray = 0;
             return;
         }
-        for (i = 0; i < numDims; i++) {
-            var->dimensions[i] = dims[i];
-        }
-        var->arrayValues = malloc(sizeof(double) * totalSize);
+        memcpy(var->dimensions, dims, sizeof(int) * numDims);
+        /* calloc initialises to zero bytes (0.0 for IEEE 754 doubles) */
+        var->arrayValues = calloc(totalSize, sizeof(double));
         if (!var->arrayValues) {
             free(var->dimensions);
             var->dimensions = NULL;
             var->isArray = 0;
             return;
         }
-        for (i = 0; i < totalSize; i++) {
-            var->arrayValues[i] = 0.0;
-        }
     } else {
         /* Variable does not exist: allocate a brand-new array variable */
+        nameLen = strlen(name);  /* Calculé une seule fois */
         newVar = malloc(sizeof(Variable));
         if (!newVar) return;
-        newVar->name = malloc(strlen(name) + 1);
+        newVar->name = malloc(nameLen + 1);
         if (!newVar->name) {
             free(newVar);
             return;
         }
-        strcpy(newVar->name, name);
+        memcpy(newVar->name, name, nameLen + 1);
         newVar->value = 0.0;
         newVar->isString = 0;
         newVar->strValue = NULL;
@@ -184,18 +207,14 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
             free(newVar);
             return;
         }
-        for (i = 0; i < numDims; i++) {
-            newVar->dimensions[i] = dims[i];
-        }
-        newVar->arrayValues = malloc(sizeof(double) * totalSize);
+        memcpy(newVar->dimensions, dims, sizeof(int) * numDims);
+        /* calloc initialises to zero bytes (0.0 for IEEE 754 doubles) */
+        newVar->arrayValues = calloc(totalSize, sizeof(double));
         if (!newVar->arrayValues) {
             free(newVar->dimensions);
             free(newVar->name);
             free(newVar);
             return;
-        }
-        for (i = 0; i < totalSize; i++) {
-            newVar->arrayValues[i] = 0.0;
         }
         newVar->next = interp->variables;
         interp->variables = newVar;
@@ -206,29 +225,13 @@ void createArray(Interpreter *interp, const char *name, int *dims, int numDims) 
 void setArrayElement(Interpreter *interp, const char *name, int *indices, int numIndices, double value) {
     Variable *var;
     int flatIndex;
-    int i;
-    int j;
-    int multiplier;
     
     var = findVariable(interp, name);
     if (!var || !var->isArray || numIndices != var->numDimensions) {
         return;
     }
     
-    /* Convert multi-dimensional indices to a flat (row-major) offset */
-    flatIndex = 0;
-    for (i = 0; i < numIndices; i++) {
-        if (indices[i] < 0 || indices[i] >= var->dimensions[i]) {
-            return; /* Index out of bounds */
-        }
-        /* Stride for this dimension: product of all subsequent dimension sizes */
-        multiplier = 1;
-        for (j = i + 1; j < numIndices; j++) {
-            multiplier *= var->dimensions[j];
-        }
-        flatIndex += indices[i] * multiplier;
-    }
-    
+    flatIndex = computeFlatIndex(var, indices, numIndices);
     if (flatIndex >= 0 && flatIndex < var->arraySize) {
         var->arrayValues[flatIndex] = value;
     }
@@ -238,29 +241,13 @@ void setArrayElement(Interpreter *interp, const char *name, int *indices, int nu
 double getArrayElement(Interpreter *interp, const char *name, int *indices, int numIndices) {
     Variable *var;
     int flatIndex;
-    int i;
-    int j;
-    int multiplier;
     
     var = findVariable(interp, name);
     if (!var || !var->isArray || numIndices != var->numDimensions) {
         return 0.0;
     }
     
-    /* Convert multi-dimensional indices to a flat (row-major) offset */
-    flatIndex = 0;
-    for (i = 0; i < numIndices; i++) {
-        if (indices[i] < 0 || indices[i] >= var->dimensions[i]) {
-            return 0.0; /* Index out of bounds */
-        }
-        /* Stride for this dimension: product of all subsequent dimension sizes */
-        multiplier = 1;
-        for (j = i + 1; j < numIndices; j++) {
-            multiplier *= var->dimensions[j];
-        }
-        flatIndex += indices[i] * multiplier;
-    }
-    
+    flatIndex = computeFlatIndex(var, indices, numIndices);
     if (flatIndex >= 0 && flatIndex < var->arraySize) {
         return var->arrayValues[flatIndex];
     }
