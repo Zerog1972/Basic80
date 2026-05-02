@@ -10,9 +10,9 @@
  * String expressions are handled separately through
  * evaluateStringExpression / evaluateStringPrimary.
  */
-#include "expression.h"
-#include "interpreter.h"
-#include "variables.h"
+#include "expr.h"
+#include "interp.h"
+#include "vars.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

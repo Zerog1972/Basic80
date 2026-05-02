@@ -7,8 +7,8 @@
  * that the variable table stays encapsulated inside the interpreter
  * state.
  */
-#include "variables.h"
-#include "interpreter.h"
+#include "vars.h"
+#include "interp.h"
 #include <stdlib.h>
 #include <string.h>
 

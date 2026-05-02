@@ -1,4 +1,4 @@
-#include "test_framework.h"
+#include "tstfrmwk.h"
 #include "../../include/lexer.h"
 #include <stdlib.h>
 

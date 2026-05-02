@@ -17,20 +17,20 @@ Write-Host "Compilation en cours..." -ForegroundColor Yellow
 
 $srcFiles = @(
     "..\..\src\lexer.c",
-    "..\..\src\variables.c", 
-    "..\..\src\expression.c",
-    "..\..\src\interpreter.c",
+    "..\..\src\vars.c", 
+    "..\..\src\expr.c",
+    "..\..\src\interp.c",
     "..\..\src\commands.c",
-    "..\..\src\control_flow.c",
-    "test_framework.c",
-    "test_lexer.c",
-    "test_variables.c",
-    "test_expression.c",
-    "test_interpreter.c",
-    "run_unit_tests.c"
+    "..\..\src\ctrlflow.c",
+    "tstfrmwk.c",
+    "tstlexer.c",
+    "tst_vars.c",
+    "tst_expr.c",
+    "tstintrp.c",
+    "runtests.c"
 )
 
-$compileCmd = "clang -std=c89 -pedantic -Wall -g -I..\..\include " + ($srcFiles -join " ") + " -o run_unit_tests.exe"
+$compileCmd = "clang -std=c89 -pedantic -Wall -g -I..\..\include " + ($srcFiles -join " ") + " -o runtests.exe"
 
 Write-Host "Commande: $compileCmd" -ForegroundColor Gray
 $output = Invoke-Expression $compileCmd 2>&1
@@ -43,7 +43,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "========================================================" -ForegroundColor Cyan
     Write-Host ""
     
-    .\run_unit_tests.exe
+    .\runtests.exe
     
     Write-Host ""
     if ($LASTEXITCODE -eq 0) {

@@ -1,6 +1,6 @@
-#include "test_framework.h"
-#include "../../include/variables.h"
-#include "../../include/interpreter.h"
+#include "tstfrmwk.h"
+#include "../../include/vars.h"
+#include "../../include/interp.h"
 #include <stdlib.h>
 #include <math.h>
 

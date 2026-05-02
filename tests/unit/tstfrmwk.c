@@ -1,4 +1,4 @@
-#include "test_framework.h"
+#include "tstfrmwk.h"
 #include <math.h>
 
 void init_test_stats(TestStats *stats) {

@@ -12,7 +12,7 @@
  *   LOAD "file" - load a program from a text file
  *   EXIT  - quit the interpreter
  */
-#include "interpreter.h"
+#include "interp.h"
 
 #ifdef _WIN32
 #include <windows.h>

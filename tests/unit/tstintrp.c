@@ -1,5 +1,5 @@
-#include "test_framework.h"
-#include "../../include/interpreter.h"
+#include "tstfrmwk.h"
+#include "../../include/interp.h"
 #include "../../include/lexer.h"
 #include <stdlib.h>
 

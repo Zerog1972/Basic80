@@ -8,7 +8,7 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-#include "interpreter.h"
+#include "interp.h"
 #include "lexer.h"
 
 /* ===== BASIC COMMAND HANDLERS ===== */

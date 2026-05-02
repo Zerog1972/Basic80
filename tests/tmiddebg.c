@@ -1,5 +1,5 @@
-#include "../include/expression.h"
-#include "../include/interpreter.h"
+#include "../include/expr.h"
+#include "../include/interp.h"
 #include "../include/lexer.h"
 #include <stdio.h>
 #include <string.h>

@@ -8,9 +8,9 @@
  * 1 signals to runProgram() that the program counter has changed and the
  * current line must be restarted from the new position.
  */
-#include "control_flow.h"
-#include "expression.h"
-#include "variables.h"
+#include "ctrlflow.h"
+#include "expr.h"
+#include "vars.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

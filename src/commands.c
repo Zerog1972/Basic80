@@ -10,8 +10,8 @@
  * reportErrorEx().
  */
 #include "commands.h"
-#include "expression.h"
-#include "variables.h"
+#include "expr.h"
+#include "vars.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>

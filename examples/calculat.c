@@ -20,8 +20,8 @@
  * @date 8 fevrier 2026
  */
 
-#include "interpreter.h"
-#include "expression.h"
+#include "interp.h"
+#include "expr.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

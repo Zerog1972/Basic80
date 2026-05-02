@@ -15,8 +15,8 @@
 #include <ctype.h>
 #include <math.h>
 #include "lexer.h"
-#include "variables.h"
-#include "expression.h"
+#include "vars.h"
+#include "expr.h"
 
 /* Error categories */
 typedef enum {

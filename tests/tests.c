@@ -1,4 +1,4 @@
-#include "interpreter.h"
+#include "interp.h"
 #include <math.h>
 
 /* Variables globales pour les tests */

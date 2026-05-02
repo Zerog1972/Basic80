@@ -7,19 +7,19 @@ TESTDIR = .
 OBJDIR = obj
 
 # Fichiers sources du projet
-SOURCES = $(SRCDIR)/lexer.c $(SRCDIR)/variables.c $(SRCDIR)/expression.c \
-          $(SRCDIR)/interpreter.c $(SRCDIR)/commands.c $(SRCDIR)/control_flow.c
+SOURCES = $(SRCDIR)/lexer.c $(SRCDIR)/vars.c $(SRCDIR)/expr.c \
+          $(SRCDIR)/interp.c $(SRCDIR)/commands.c $(SRCDIR)/ctrlflow.c
 
 # Fichiers de tests
-TEST_SOURCES = test_framework.c test_lexer.c test_variables.c \
-               test_expression.c test_interpreter.c run_unit_tests.c
+TEST_SOURCES = tstfrmwk.c tstlexer.c tst_vars.c \
+               tst_expr.c tstintrp.c runtests.c
 
 # Fichiers objets
 OBJECTS = $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 TEST_OBJECTS = $(TEST_SOURCES:%.c=$(OBJDIR)/%.o)
 
 # Exécutable
-TARGET = run_unit_tests.exe
+TARGET = runtests.exe
 
 # Règle par défaut
 all: $(OBJDIR) $(TARGET)

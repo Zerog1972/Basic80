@@ -1,6 +1,6 @@
-#include "test_framework.h"
-#include "../../include/expression.h"
-#include "../../include/interpreter.h"
+#include "tstfrmwk.h"
+#include "../../include/expr.h"
+#include "../../include/interp.h"
 #include "../../include/lexer.h"
 #include <stdlib.h>
 #include <math.h>

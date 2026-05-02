@@ -1,4 +1,4 @@
-#include "test_framework.h"
+#include "tstfrmwk.h"
 
 /* Déclarations des fonctions de test */
 void run_lexer_tests(void);

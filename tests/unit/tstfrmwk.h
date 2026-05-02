@@ -1,5 +1,5 @@
-#ifndef TEST_FRAMEWORK_H
-#define TEST_FRAMEWORK_H
+#ifndef TSTFRMWK_H
+#define TSTFRMWK_H
 
 #include <stdio.h>
 #include <string.h>

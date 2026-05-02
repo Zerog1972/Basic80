@@ -12,8 +12,8 @@
  *   executeCommand()     - execute a single BASIC statement directly
  *   freeInterpreter()    - release all resources
  */
-#include "interpreter.h"
-#include "control_flow.h"
+#include "interp.h"
+#include "ctrlflow.h"
 #include "commands.h"
 
 /* ===== INTERPRETER ===== */
