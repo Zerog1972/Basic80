@@ -13,10 +13,106 @@
  *   EXIT  - quit the interpreter
  */
 #include "interp.h"
+#include <ctype.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
+/*
+ * Check that a single path component (file or directory name) conforms to
+ * the DOS 8.3 format:
+ *   - Name part  : 1 to 8 alphanumeric characters (or $%'-_@~`!(){}^#&)
+ *   - Extension  : 0 to 3 characters of the same set, separated by one dot
+ *   - No second dot is allowed
+ * Returns 1 if valid, 0 otherwise.
+ */
+static int isValidName83(const char *name) {
+    const char *allowed = "$%'-_@~`!(){}^#&";
+    const char *dot;
+    size_t namelen;
+    size_t extlen;
+    size_t i;
+
+    if (!name || *name == '\0') return 0;
+
+    dot = strchr(name, '.');
+    if (dot) {
+        namelen = (size_t)(dot - name);
+        extlen  = strlen(dot + 1);
+        /* A second dot in the extension is forbidden */
+        if (strchr(dot + 1, '.') != NULL) return 0;
+    } else {
+        namelen = strlen(name);
+        extlen  = 0;
+    }
+
+    if (namelen == 0 || namelen > 8) return 0;
+    if (extlen > 3)                  return 0;
+
+    for (i = 0; i < namelen; i++) {
+        char c = name[i];
+        if (!isalnum((unsigned char)c) && !strchr(allowed, c)) return 0;
+    }
+    for (i = 0; i < extlen; i++) {
+        char c = dot[1 + i];
+        if (!isalnum((unsigned char)c) && !strchr(allowed, c)) return 0;
+    }
+
+    return 1;
+}
+
+/*
+ * Check that every component of a path (directories and final filename)
+ * conforms to the DOS 8.3 format.  Both '/' and '\' are accepted as
+ * separators.  Absolute path prefixes (drive letters like "C:" and a
+ * leading separator) are skipped automatically.
+ * Returns 1 if all components are valid, 0 otherwise.
+ * On failure, *badComponent is set to point to the offending component
+ * inside the local buffer – copy it before the buffer goes out of scope.
+ */
+static int isValidPath83(const char *path, char *badComponent, size_t badSize) {
+    char buf[256];
+    char *p;
+    char *sep;
+
+    strncpy(buf, path, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    p = buf;
+
+    /* Skip an optional drive letter (e.g. "C:") */
+    if (isalpha((unsigned char)p[0]) && p[1] == ':') {
+        p += 2;
+    }
+
+    /* Skip a leading separator */
+    if (*p == '/' || *p == '\\') p++;
+
+    while (*p) {
+        /* Find the next separator */
+        sep = p;
+        while (*sep && *sep != '/' && *sep != '\\') sep++;
+
+        if (sep > p) {
+            char saved = *sep;
+            *sep = '\0';
+            if (!isValidName83(p)) {
+                if (badComponent && badSize > 0) {
+                    strncpy(badComponent, p, badSize - 1);
+                    badComponent[badSize - 1] = '\0';
+                }
+                return 0;
+            }
+            *sep = saved;
+        }
+
+        if (*sep == '\0') break;
+        p = sep + 1;
+    }
+
+    return 1;
+}
 
 /* Handle a SAVE or LOAD meta-command: extract the quoted filename and
  * call saveProgram / loadProgram accordingly. */
@@ -24,6 +120,7 @@ static void handleFileCommand(Interpreter *interp, const char *line, int isSave)
     const char *start;
     const char *end;
     char filename[256];
+    char badComp[64];
     size_t len;
 
     start = strchr(line, '"');
@@ -42,6 +139,13 @@ static void handleFileCommand(Interpreter *interp, const char *line, int isSave)
     if (len >= sizeof(filename)) len = sizeof(filename) - 1;
     memcpy(filename, start, len);
     filename[len] = '\0';
+
+    /* Validate every component of the path against the DOS 8.3 format */
+    if (!isValidPath83(filename, badComp, sizeof(badComp))) {
+        printf("Error: '%s' does not conform to the DOS 8.3 format.\n", badComp);
+        printf("  Rules: name <= 8 chars, extension <= 3 chars, no spaces.\n");
+        return;
+    }
 
     if (isSave) {
         if (saveProgram(interp, filename))
