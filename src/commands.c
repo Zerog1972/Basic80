@@ -322,7 +322,7 @@ void handleData(Interpreter *interp, Token *tokens, int lineNum) {
             strcpy(newItem->value, tokens[pos].value);
         } else if (tokens[pos].type == TOK_MINUS && tokens[pos + 1].type == TOK_NUMBER) {
             /* Handle negative number literals */
-            snprintf(buffer, sizeof(buffer), "-%s", tokens[pos + 1].value);
+            sprintf(buffer, "-%s", tokens[pos + 1].value);
             newItem->value = malloc(strlen(buffer) + 1);
             if (!newItem->value) {
                 free(newItem);

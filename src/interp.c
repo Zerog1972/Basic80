@@ -189,49 +189,59 @@ void freeInterpreter(Interpreter *interp) {
 }
 
 void addLine(Interpreter *interp, int lineNum, const char *code) {
-    Line *newLine;
     Line *current;
-    size_t codeLen = strlen(code);  /* Calculé une seule fois */
-    
-    newLine = malloc(sizeof(Line));
-    if (!newLine) return;
-    newLine->lineNum = lineNum;
-    newLine->code = malloc(codeLen + 1);
-    if (!newLine->code) {
-        free(newLine);
-        return;
-    }
-    strcpy(newLine->code, code);
-    newLine->next = NULL;
-    
+    Line *newLine;
+    char *newCode;
+    size_t codeLen;
+
+    codeLen = strlen(code);
+
+    /* Case 1: list is empty or new line goes before the first */
     if (!interp->program || interp->program->lineNum > lineNum) {
+        newLine = malloc(sizeof(Line));
+        if (!newLine) return;
+        newLine->code = malloc(codeLen + 1);
+        if (!newLine->code) { free(newLine); return; }
+        memcpy(newLine->code, code, codeLen + 1);
+        newLine->lineNum = lineNum;
         newLine->next = interp->program;
         interp->program = newLine;
-    } else if (interp->program->lineNum == lineNum) {
-        /* Remplacer la première ligne */
+        return;
+    }
+
+    /* Case 2: first line matches — replace in-place, no new node needed */
+    if (interp->program->lineNum == lineNum) {
+        newCode = malloc(codeLen + 1);
+        if (!newCode) return;
         free(interp->program->code);
-        interp->program->code = malloc(codeLen + 1);
-        strcpy(interp->program->code, code);
-        free(newLine->code);
-        free(newLine);
+        memcpy(newCode, code, codeLen + 1);
+        interp->program->code = newCode;
+        return;
+    }
+
+    /* Case 3: find insertion or replacement point in the rest of the list */
+    current = interp->program;
+    while (current->next && current->next->lineNum < lineNum) {
+        current = current->next;
+    }
+
+    if (current->next && current->next->lineNum == lineNum) {
+        /* Replace existing line in-place, no new node needed */
+        newCode = malloc(codeLen + 1);
+        if (!newCode) return;
+        free(current->next->code);
+        memcpy(newCode, code, codeLen + 1);
+        current->next->code = newCode;
     } else {
-        current = interp->program;
-        while (current->next && current->next->lineNum < lineNum) {
-            current = current->next;
-        }
-        
-        if (current->next && current->next->lineNum == lineNum) {
-            /* Replace an existing line with the same number */
-            free(current->next->code);
-            current->next->code = malloc(codeLen + 1);
-            strcpy(current->next->code, code);
-            free(newLine->code);
-            free(newLine);
-        } else {
-            /* Insert a new line into the sorted list */
-            newLine->next = current->next;
-            current->next = newLine;
-        }
+        /* Insert a new node at the correct sorted position */
+        newLine = malloc(sizeof(Line));
+        if (!newLine) return;
+        newLine->code = malloc(codeLen + 1);
+        if (!newLine->code) { free(newLine); return; }
+        memcpy(newLine->code, code, codeLen + 1);
+        newLine->lineNum = lineNum;
+        newLine->next = current->next;
+        current->next = newLine;
     }
 }
 
@@ -759,8 +769,6 @@ int registerCustomNumericFunction(Interpreter *interp, const char *name, CustomN
     newFunc->name = nameCopy;
     newFunc->handler = handler;
     newFunc->next = interp->customNumFuncs;
-    
-    /* Prepend to the list */
     interp->customNumFuncs = newFunc;
     
     return 1;
@@ -796,8 +804,6 @@ int registerCustomStringFunction(Interpreter *interp, const char *name, CustomSt
     newFunc->name = nameCopy;
     newFunc->handler = handler;
     newFunc->next = interp->customStrFuncs;
-    
-    /* Prepend to the list */
     interp->customStrFuncs = newFunc;
     
     return 1;
@@ -833,8 +839,6 @@ int registerCustomCommand(Interpreter *interp, const char *name, CustomCommandHa
     newCmd->name = nameCopy;
     newCmd->handler = handler;
     newCmd->next = interp->customCommands;
-    
-    /* Prepend to the list */
     interp->customCommands = newCmd;
     
     return 1;

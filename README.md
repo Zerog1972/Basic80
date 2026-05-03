@@ -106,7 +106,7 @@ Or use the VS Code task: **C/C++: clang.exe build all files**
 ### Unit tests
 Compile and run the tests:
 ```bash
-clang -std=c89 -pedantic -Wall -g -Iinclude tests/tests.c src/interpreter.c src/lexer.c src/variables.c src/expression.c src/control_flow.c src/commands.c -o tests.exe
+clang -std=c89 -pedantic -Wall -g -Iinclude tests/tests.c src/interp.c src/lexer.c src/vars.c src/expr.c src/ctrlflow.c src/commands.c -o tests.exe
 .\tests.exe
 ```
 
@@ -625,26 +625,59 @@ The project is organised as follows:
 
 ### Source files (src/):
 - **main.c** - Main entry point and interactive loop
-- **interpreter.c** - Interpreter core and orchestration
-- **commands.c** - BASIC commands (PRINT, LET, DIM, INPUT)
-- **control_flow.c** - Control flow handling (IF/FOR/GOTO/GOSUB)
-- **expression.c** - Arithmetic and string expression evaluation
-- **variables.c** - Variable and multi-dimensional array management
+- **interp.c** - Interpreter core and orchestration
+- **commands.c** - BASIC commands (PRINT, LET, DIM, INPUT, DATA, READ, RESTORE, HELP, CLS)
+- **ctrlflow.c** - Control flow handling (IF/THEN/ELSE, FOR/NEXT, GOTO, GOSUB/RETURN)
+- **expr.c** - Arithmetic and string expression evaluation
+- **vars.c** - Variable and multi-dimensional array management
 - **lexer.c** - Lexical analysis and tokenisation
 
 ### Components:
-1. **Lexer** - Tokenises source code (53 keywords, 73 token types)
-2. **Variables** - Manages numeric variables, strings, and arrays up to 10 dimensions
-3. **Expression** - Evaluation with operator precedence, math and string functions
-4. **Control Flow** - Handles IF/THEN/ELSE, FOR/NEXT, GOTO, GOSUB/RETURN
-5. **Commands** - Executes PRINT, LET, DIM, INPUT commands
-6. **Interpreter** - Minimal orchestration of the BASIC program
+1. **Lexer** (`lexer.c`) - Tokenises source code (53 keywords, 73 token types)
+2. **Variables** (`vars.c`) - Manages numeric variables, strings, and arrays up to 10 dimensions
+3. **Expression** (`expr.c`) - Evaluation with operator precedence, math and string functions
+4. **Control Flow** (`ctrlflow.c`) - Handles IF/THEN/ELSE, FOR/NEXT, GOTO, GOSUB/RETURN
+5. **Commands** (`commands.c`) - Executes PRINT, LET, DIM, INPUT, DATA/READ/RESTORE, HELP, CLS
+6. **Interpreter** (`interp.c`) - Orchestration, program storage, extension hook registry
+
+### Extension hook system
+
+The interpreter can be extended at runtime without modifying its source code.
+Three types of hooks are available:
+
+```c
+/* Custom numeric function: PRINT DOUBLE(21) -> 42 */
+double myDouble(Interpreter *interp, Token *tokens, int *pos) {
+    double arg = evaluateExpression(interp, tokens, pos);
+    return arg * 2.0;
+}
+registerCustomNumericFunction(interp, "DOUBLE", myDouble);
+
+/* Custom string function: PRINT REVERSE$("Hello") -> olleH */
+char* myReverse(Interpreter *interp, Token *tokens, int *pos) {
+    /* ... */
+}
+registerCustomStringFunction(interp, "REVERSE$", myReverse);
+
+/* Custom command: BEEP */
+void myBeep(Interpreter *interp, Token *tokens) { printf("\a"); }
+registerCustomCommand(interp, "BEEP", myBeep);
+```
+
+See `include/interp.h` and `extens/extens.c` for a full working example.
 
 ## Current limitations
 
-- No advanced error handling
-- Angles for trigonometric functions are in radians (use RAD/DEG for conversion)
+- Filenames for `SAVE`/`LOAD` must conform to the DOS 8.3 format (max 8-character name, 3-character extension, no spaces)
+- Only numeric arrays; string arrays (`DIM A$(10)`) are not supported
+- No logical operators (`AND`, `OR`, `NOT`) in conditions
+- No user-defined functions (`DEF FN`)
+- `INPUT` accepts only one variable per statement
+- Angles for trigonometric functions are in radians (use `RAD()`/`DEG()` for conversion)
 
 ## Possible extensions
 
-- Improve error diagnostics (line, column, message)
+- Logical operators (`AND`, `OR`, `NOT`) in `IF` conditions
+- String arrays
+- User-defined functions (`DEF FN`)
+- `INPUT` with multiple comma-separated variables

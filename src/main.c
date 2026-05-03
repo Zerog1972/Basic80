@@ -168,9 +168,16 @@ int main(void) {
 #endif
 
     interp = createInterpreter();
-    
-    printf("=== Basic80 ===\n");
-    printf("Type HELP to see available commands.\n\n");
+
+    printf("  ____               _         ___   ___  \n");
+    printf(" | __ )  __ _  ___  (_)  ___  ( _ ) / _ \\ \n");
+    printf(" |  _ \\ / _` |/ __| | | / __| / _ \\| | | |\n");
+    printf(" | |_) | (_| |\\__ \\ | || (__ | (_) | |_| |\n");
+    printf(" |____/ \\__,_||___/ |_| \\___| \\___/ \\___/ \n");
+    printf("                      by ZeroG1972 - 2026\n\n");
+    printf("Welcome to Basic80 interpreter for a vintage-style BASIC dialect.\n");
+
+    printf("\n\nType HELP to see available commands.\n\n");
     
     while (1) {
         printf("> ");
