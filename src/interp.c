@@ -355,6 +355,7 @@ static char** splitByColon(const char *line, int *count) {
     int capacity;
     int isInRem;
     int isInString;
+    int afterThen;  /* Once THEN is found, stop splitting on ':' */
     
     *count = 0;
     capacity = 4;  /* La plupart des lignes BASIC ont <= 4 instructions */
@@ -372,6 +373,7 @@ static char** splitByColon(const char *line, int *count) {
     p = lineCopy;
     isInRem = 0;
     isInString = 0;
+    afterThen = 0;
     
     /* Check if the line starts with a REM statement */
     while (*p && isspace(*p)) p++;
@@ -387,9 +389,19 @@ static char** splitByColon(const char *line, int *count) {
             p++;
             continue;
         }
+
+        /* Detect THEN keyword: once seen, all remaining text on this line
+         * belongs to the IF clause and must NOT be split on ':'. */
+        if (!isInString && !isInRem && !afterThen && *p == 'T') {
+            if ((p == lineCopy || *(p-1) == ' ' || *(p-1) == '\t') &&
+                strncmp(p, "THEN", 4) == 0 &&
+                (p[4] == ' ' || p[4] == '\t' || p[4] == '\0')) {
+                afterThen = 1;
+            }
+        }
         
-        if (*p == ':' && !isInRem && !isInString) {
-            /* Found a ':' outside a string and not after REM: split here */
+        if (*p == ':' && !isInRem && !isInString && !afterThen) {
+            /* Found a ':' outside a string and not after REM/THEN: split here */
             *p = '\0';
             if (*count >= capacity) {
                 char **newParts;
@@ -412,6 +424,7 @@ static char** splitByColon(const char *line, int *count) {
             (*count)++;
             p++;
             start = p;
+            afterThen = 0;  /* Reset for the next statement */
             
             /* Vérifier si la prochaine instruction est REM */
             while (*p && isspace(*p)) p++;
@@ -516,7 +529,11 @@ static int executeStatementInProgram(Interpreter *interp, const char *stmt, Line
         }
     }
     else if (tokens[0].type == TOK_NEXT) {
-        if (handleNext(interp)) {
+        /* Pass the variable name (if any) so handleNext can discard orphaned
+         * inner loops left by a GOTO that jumped out of a nested FOR. */
+        const char *nextVar = (tokens[1].type == TOK_IDENTIFIER)
+                              ? tokens[1].value : NULL;
+        if (handleNext(interp, nextVar)) {
             /* Jump back to the line immediately after the matching FOR */
             *line = interp->forStack->startLine->next;
             freeTokens(tokens);

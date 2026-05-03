@@ -47,9 +47,12 @@ static int isStringVariable(const char *name) {
 void handlePrint(Interpreter *interp, Token *tokens) {
     int pos;
     double val;
+    int trailingSemicolon;
     
     pos = 1;
+    trailingSemicolon = 0;
     while (tokens[pos].type != TOK_EOF) {
+        trailingSemicolon = 0;
         if (isStringExpression(interp, tokens, pos)) {
             char *strResult = evaluateStringExpression(interp, tokens, &pos);
             if (!strResult) {
@@ -67,10 +70,11 @@ void handlePrint(Interpreter *interp, Token *tokens) {
             pos++;
         } else if (tokens[pos].type == TOK_SEMICOLON) {
             /* Semicolon: no space between items */
+            trailingSemicolon = 1;
             pos++;
         }
     }
-    printf("\n");
+    if (!trailingSemicolon) printf("\n");
 }
 
 /* ===== LET COMMAND ===== */

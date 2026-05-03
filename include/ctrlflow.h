@@ -138,10 +138,13 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine);
  *   NEXT
  *   NEXT I
  *
- * Note: The variable name after NEXT is optional and currently ignored.
- *       NEXT always applies to the innermost open FOR loop.
+ * Note: If varName is non-NULL and non-empty, any inner FOR loops whose
+ *       variable does not match are discarded before processing the named
+ *       loop.  This is the correct behaviour when GOTO exits an inner loop.
+ *       If varName is NULL or empty, the innermost open loop is used (as
+ *       before).
  */
-int handleNext(Interpreter *interp);
+int handleNext(Interpreter *interp, const char *varName);
 
 /**
  * Locate a program line by its line number.

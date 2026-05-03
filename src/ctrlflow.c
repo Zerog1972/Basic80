@@ -50,6 +50,47 @@ static void buildCommandFromTokens(Token *tokens, int startPos, int endPos, char
     *p = '\0';
 }
 
+/* Execute a THEN/ELSE clause: split on ':', execute each statement.
+ * Handles GOTO anywhere in the clause (not just as the first keyword).
+ * Returns 1 and updates *currentLine if a GOTO jump was made, 0 otherwise. */
+static int executeIfClause(Interpreter *interp, const char *clause, Line **currentLine) {
+    char buf[512];
+    char *start;
+    char *p;
+    int inStr;
+    int targetLine;
+    Line *target;
+
+    strncpy(buf, clause, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    start = buf;
+    inStr = 0;
+    for (p = buf; ; p++) {
+        if (*p == '"') inStr = !inStr;
+        if (!inStr && (*p == ':' || *p == '\0')) {
+            char saved = *p;
+            *p = '\0';
+            while (*start == ' ' || *start == '\t') start++;
+            if (*start != '\0') {
+                if (strncmp(start, "GOTO ", 5) == 0) {
+                    targetLine = atoi(start + 5);
+                    target = findLineByNumber(interp, targetLine);
+                    if (target) {
+                        *currentLine = target;
+                        return 1;
+                    }
+                } else {
+                    executeCommand(interp, start);
+                }
+            }
+            if (saved == '\0') break;
+            start = p + 1;
+        }
+    }
+    return 0;
+}
+
 /* ===== IF/THEN/ELSE HANDLING ===== */
 
 int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
@@ -60,8 +101,6 @@ int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
     int i;
     char thenPart[512];
     char elsePart[512];
-    int targetLine;
-    Line *target;
     
     pos = 1;
     condition = evaluateCondition(interp, tokens, &pos);
@@ -87,34 +126,14 @@ int handleIfStatement(Interpreter *interp, Token *tokens, Line **currentLine) {
             } else {
                 buildCommandFromTokens(tokens, thenPos, 1000, thenPart);
             }
-            
             if (thenPart[0] != '\0') {
-                if (strncmp(thenPart, "GOTO ", 5) == 0) {
-                    targetLine = atoi(&thenPart[5]);
-                    target = findLineByNumber(interp, targetLine);
-                    if (target) {
-                        *currentLine = target;
-                        return 1;
-                    }
-                } else {
-                    executeCommand(interp, thenPart);
-                }
+                if (executeIfClause(interp, thenPart, currentLine)) return 1;
             }
         } else if (elsePos > 0) {
             /* Execute the ELSE branch */
             buildCommandFromTokens(tokens, elsePos, 1000, elsePart);
-            
             if (elsePart[0] != '\0') {
-                if (strncmp(elsePart, "GOTO ", 5) == 0) {
-                    targetLine = atoi(&elsePart[5]);
-                    target = findLineByNumber(interp, targetLine);
-                    if (target) {
-                        *currentLine = target;
-                        return 1;
-                    }
-                } else {
-                    executeCommand(interp, elsePart);
-                }
+                if (executeIfClause(interp, elsePart, currentLine)) return 1;
             }
         }
     }
@@ -262,27 +281,53 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
     return 0;
 }
 
-int handleNext(Interpreter *interp) {
+int handleNext(Interpreter *interp, const char *varName) {
     ForLoop *forLoop;
     double currentVal;
-    
-    if (interp->forStack) {
-        forLoop = interp->forStack;
-        currentVal = getVariable(interp, forLoop->varName);
-        currentVal += forLoop->stepValue;
-        setVariable(interp, forLoop->varName, currentVal);
-        
-        /* Check whether the loop should continue */
-        if ((forLoop->stepValue > 0 && currentVal <= forLoop->endValue) ||
-            (forLoop->stepValue < 0 && currentVal >= forLoop->endValue)) {
-            /* Loop continues: return 1 to signal FOR line re-entry */
-            return 1;
-        } else {
-            /* Loop finished: pop the FOR entry */
+
+    if (!interp->forStack) return 0;
+
+    /* If a variable name is given, discard any inner loops that don't match.
+     * This handles the case where GOTO jumped out of an inner FOR loop,
+     * leaving its stack entry orphaned.
+     * IMPORTANT: only discard inner loops if varName is actually on the stack.
+     * If it is NOT found, the corresponding FOR was skipped entirely and this
+     * NEXT is a no-op (do not touch any outer loop). */
+    if (varName && varName[0] != '\0') {
+        ForLoop *search = interp->forStack;
+        int found = 0;
+        while (search) {
+            if (strcmp(search->varName, varName) == 0) { found = 1; break; }
+            search = search->next;
+        }
+        if (!found) return 0; /* FOR was skipped: treat NEXT as no-op */
+
+        while (interp->forStack &&
+               strcmp(interp->forStack->varName, varName) != 0) {
+            forLoop = interp->forStack;
             interp->forStack = forLoop->next;
             free(forLoop->varName);
             free(forLoop);
         }
+    }
+
+    if (!interp->forStack) return 0;
+
+    forLoop = interp->forStack;
+    currentVal = getVariable(interp, forLoop->varName);
+    currentVal += forLoop->stepValue;
+    setVariable(interp, forLoop->varName, currentVal);
+
+    /* Check whether the loop should continue */
+    if ((forLoop->stepValue > 0 && currentVal <= forLoop->endValue) ||
+        (forLoop->stepValue < 0 && currentVal >= forLoop->endValue)) {
+        /* Loop continues: return 1 to signal FOR line re-entry */
+        return 1;
+    } else {
+        /* Loop finished: pop the FOR entry */
+        interp->forStack = forLoop->next;
+        free(forLoop->varName);
+        free(forLoop);
     }
     return 0;
 }
