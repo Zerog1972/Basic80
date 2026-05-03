@@ -29,6 +29,7 @@ static int isKeyword(const char *word, BasicTokenType *type) {
         case 'C':
             if (strcmp(word, "CHR$")  == 0 ||
                 strcmp(word, "CHR")   == 0) { *type = TOK_CHR;  return 1; }
+            if (strcmp(word, "CLS")   == 0) { *type = TOK_CLS;  return 1; }
             if (strcmp(word, "COS")   == 0) { *type = TOK_COS;  return 1; }
             if (strcmp(word, "COSH")  == 0) { *type = TOK_COSH; return 1; }
             break;

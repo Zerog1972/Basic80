@@ -189,4 +189,17 @@ void handleRestore(Interpreter *interp, Token *tokens);
  */
 void handleHelp(Interpreter *interp, Token *tokens);
 
+/**
+ * Execute the CLS statement (clear screen).
+ *
+ * Clears the terminal screen and moves the cursor to the top-left corner.
+ *
+ * @param interp  Pointer to the interpreter (unused)
+ * @param tokens  Token array (unused)
+ *
+ * BASIC syntax:
+ *   CLS
+ */
+void handleCls(Interpreter *interp, Token *tokens);
+
 #endif /* COMMANDS_H */

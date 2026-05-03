@@ -492,8 +492,12 @@ void handleHelp(Interpreter *interp, Token *tokens) {
         printf("  INT      - Integer part\n");
         printf("  SGN      - Sign of a number\n");
         printf("  RND      - Random number\n");
-        printf("  SIN/COS/TAN/ATN - Trigonometric functions\n");
-        printf("  EXP/LOG/LOG10   - Exponential and logarithms\n\n");
+        printf("  SIN/COS/TAN      - Trigonometric functions\n");
+        printf("  ATN/ATAN/ASIN/ACOS - Inverse trigonometric functions\n");
+        printf("  EXP/LOG/LOG10    - Exponential and logarithms\n");
+        printf("  POW              - Power (x^y)\n");
+        printf("  DEG/RAD          - Angle unit conversion\n");
+        printf("  SINH/COSH/TANH   - Hyperbolic functions\n\n");
 
         printf("String functions:\n");
         printf("  LEN      - Length of a string\n");
@@ -501,7 +505,9 @@ void handleHelp(Interpreter *interp, Token *tokens) {
         printf("  CHR$     - ASCII character\n");
         printf("  ASC      - ASCII code of a character\n");
         printf("  STR$     - Convert number to string\n");
-        printf("  VAL      - Convert string to number\n\n");
+        printf("  VAL      - Convert string to number\n");
+        printf("  SPACE$   - String of spaces\n");
+        printf("  STRING$  - Repeat a character\n\n");
 
         printf("System commands:\n");
         printf("  LIST     - Display the program\n");
@@ -509,6 +515,7 @@ void handleHelp(Interpreter *interp, Token *tokens) {
         printf("  NEW      - Clear the program\n");
         printf("  SAVE     - Save the program\n");
         printf("  LOAD     - Load a program\n");
+        printf("  CLS      - Clear the screen\n");
         printf("  EXIT     - Quit the interpreter\n");
         printf("  HELP     - Show this help\n\n");
 
@@ -835,15 +842,42 @@ void handleHelp(Interpreter *interp, Token *tokens) {
             printf("  PRINT TAN(0)        -> Outputs: 0.00\n");
             printf("  PRINT TAN(3.14159/4) -> Outputs: 1.00\n\n");
         }
-        else if (strcmp(cmdName, "ATN") == 0) {
-            printf("=== ATN ===\n\n");
-            printf("Syntax: ATN(expression)\n\n");
+        else if (strcmp(cmdName, "ATN") == 0 || strcmp(cmdName, "ATAN") == 0) {
+            printf("=== ATN / ATAN ===\n\n");
+            printf("Syntax: ATN(expression)\n");
+            printf("        ATAN(expression)\n\n");
             printf("Description:\n");
             printf("  Returns the arctangent (in radians) of a number.\n");
-            printf("  Result is between -PI/2 and PI/2.\n\n");
+            printf("  Result is between -PI/2 and PI/2.\n");
+            printf("  ATN and ATAN are identical.\n\n");
             printf("Examples:\n");
             printf("  PRINT ATN(1)        -> Outputs: 0.79 (PI/4)\n");
+            printf("  PRINT ATAN(1)       -> Outputs: 0.79 (PI/4)\n");
             printf("  A = ATN(Y/X) * 180 / 3.14159 -> Angle in degrees\n\n");
+        }
+        else if (strcmp(cmdName, "ASIN") == 0) {
+            printf("=== ASIN ===\n\n");
+            printf("Syntax: ASIN(expression)\n\n");
+            printf("Description:\n");
+            printf("  Returns the arcsine (in radians) of a number.\n");
+            printf("  The argument must be between -1 and 1.\n");
+            printf("  Result is between -PI/2 and PI/2.\n\n");
+            printf("Examples:\n");
+            printf("  PRINT ASIN(0)       -> Outputs: 0.00\n");
+            printf("  PRINT ASIN(1)       -> Outputs: 1.57 (PI/2)\n");
+            printf("  A = ASIN(0.5) * 180 / 3.14159 -> 30 degrees\n\n");
+        }
+        else if (strcmp(cmdName, "ACOS") == 0) {
+            printf("=== ACOS ===\n\n");
+            printf("Syntax: ACOS(expression)\n\n");
+            printf("Description:\n");
+            printf("  Returns the arccosine (in radians) of a number.\n");
+            printf("  The argument must be between -1 and 1.\n");
+            printf("  Result is between 0 and PI.\n\n");
+            printf("Examples:\n");
+            printf("  PRINT ACOS(1)       -> Outputs: 0.00\n");
+            printf("  PRINT ACOS(0)       -> Outputs: 1.57 (PI/2)\n");
+            printf("  A = ACOS(-1) * 180 / 3.14159 -> 180 degrees\n\n");
         }
         else if (strcmp(cmdName, "EXP") == 0) {
             printf("=== EXP ===\n\n");
@@ -877,6 +911,36 @@ void handleHelp(Interpreter *interp, Token *tokens) {
             printf("  PRINT LOG10(100)    -> Outputs: 2.00\n");
             printf("  PRINT LOG10(1000)   -> Outputs: 3.00\n");
             printf("  D = LOG10(X)        -> Number of digits - 1\n\n");
+        }
+        else if (strcmp(cmdName, "POW") == 0) {
+            printf("=== POW ===\n\n");
+            printf("Syntax: POW(base, exponent)\n\n");
+            printf("Description:\n");
+            printf("  Returns base raised to the power exponent (base^exponent).\n\n");
+            printf("Examples:\n");
+            printf("  PRINT POW(2, 10)    -> Outputs: 1024.00\n");
+            printf("  PRINT POW(3, 3)     -> Outputs: 27.00\n");
+            printf("  Y = POW(X, 0.5)     -> Square root of X\n\n");
+        }
+        else if (strcmp(cmdName, "DEG") == 0) {
+            printf("=== DEG ===\n\n");
+            printf("Syntax: DEG(expression)\n\n");
+            printf("Description:\n");
+            printf("  Converts an angle from radians to degrees.\n\n");
+            printf("Examples:\n");
+            printf("  PRINT DEG(3.14159)  -> Outputs: 180.00\n");
+            printf("  PRINT DEG(1.5708)   -> Outputs: 90.00\n");
+            printf("  A = DEG(ATN(1))     -> Outputs: 45.00\n\n");
+        }
+        else if (strcmp(cmdName, "RAD") == 0) {
+            printf("=== RAD ===\n\n");
+            printf("Syntax: RAD(expression)\n\n");
+            printf("Description:\n");
+            printf("  Converts an angle from degrees to radians.\n\n");
+            printf("Examples:\n");
+            printf("  PRINT RAD(180)      -> Outputs: 3.14\n");
+            printf("  PRINT RAD(90)       -> Outputs: 1.57\n");
+            printf("  X = SIN(RAD(30))    -> Sine of 30 degrees\n\n");
         }
         else if (strcmp(cmdName, "SINH") == 0) {
             printf("=== SINH ===\n\n");
@@ -989,6 +1053,38 @@ void handleHelp(Interpreter *interp, Token *tokens) {
             printf("  X = VAL(\"123ABC\")   -> X = 123.00\n");
             printf("  Y = VAL(\"ABC\")      -> Y = 0.00\n\n");
         }
+        else if (strcmp(cmdName, "SPACE$") == 0 || strcmp(cmdName, "SPACE") == 0) {
+            printf("=== SPACE$ ===\n\n");
+            printf("Syntax: SPACE$(n)\n\n");
+            printf("Description:\n");
+            printf("  Returns a string of n space characters.\n\n");
+            printf("Examples:\n");
+            printf("  PRINT SPACE$(5)     -> Outputs: \"     \" (5 spaces)\n");
+            printf("  PRINT \"A\" + SPACE$(3) + \"B\" -> Outputs: A   B\n");
+            printf("  A$ = SPACE$(10)     -> A$ = 10 spaces\n\n");
+        }
+        else if (strcmp(cmdName, "STRING$") == 0 || strcmp(cmdName, "STRING") == 0) {
+            printf("=== STRING$ ===\n\n");
+            printf("Syntax: STRING$(n, code)\n");
+            printf("        STRING$(n, string$)\n\n");
+            printf("Description:\n");
+            printf("  Returns a string of n copies of a character.\n");
+            printf("  The character is specified by its ASCII code or the first\n");
+            printf("  character of a string.\n\n");
+            printf("Examples:\n");
+            printf("  PRINT STRING$(5, 42)    -> Outputs: *****\n");
+            printf("  PRINT STRING$(3, \"AB\") -> Outputs: AAA\n");
+            printf("  SEP$ = STRING$(40, 45)  -> 40 hyphens\n\n");
+        }
+        else if (strcmp(cmdName, "CLS") == 0) {
+            printf("=== CLS ===\n\n");
+            printf("Syntax: CLS\n\n");
+            printf("Description:\n");
+            printf("  Clears the screen and moves the cursor to the top-left corner.\n\n");
+            printf("Examples:\n");
+            printf("  CLS                 -> Clears the screen\n");
+            printf("  CLS : PRINT \"Menu\" -> Clear then display\n\n");
+        }
         else {
             printf("Unknown command or function: %s\n", cmdName);
             printf("Type HELP to see the list of available commands and functions.\n");
@@ -996,4 +1092,17 @@ void handleHelp(Interpreter *interp, Token *tokens) {
     } else {
         printf("Usage: HELP [command]\n");
     }
+}
+
+/* ===== CLS COMMAND ===== */
+
+void handleCls(Interpreter *interp, Token *tokens) {
+    (void)interp;
+    (void)tokens;
+#ifdef _WIN32
+    system("cls");
+#else
+    printf("\033[2J\033[H");
+    fflush(stdout);
+#endif
 }

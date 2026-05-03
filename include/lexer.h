@@ -31,6 +31,7 @@ typedef enum {
     TOK_SAVE,
     TOK_LOAD,
     TOK_HELP,
+    TOK_CLS,
     TOK_SIN,
     TOK_COS,
     TOK_TAN,

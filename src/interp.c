@@ -305,6 +305,9 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
     else if (tokens[0].type == TOK_HELP) {
         handleHelp(interp, tokens);
     }
+    else if (tokens[0].type == TOK_CLS) {
+        handleCls(interp, tokens);
+    }
     else if (tokens[0].type == TOK_FOR) {
         /* FOR loops are only valid inside a running program */
         printf("Error: FOR can only be used inside a program.\n");
