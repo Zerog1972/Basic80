@@ -16,16 +16,138 @@
 #include "ctrlflow.h"
 #include "commands.h"
 
+static void freeSplitArray(char **parts, int count);
+static char** splitByColon(const char *line, int *count);
+
+static void freeLineCache(Line *line) {
+    if (line->statements) {
+        freeSplitArray(line->statements, line->statementCount);
+        line->statements = NULL;
+    }
+    if (line->statementTypes) {
+        free(line->statementTypes);
+        line->statementTypes = NULL;
+    }
+    line->statementCount = 0;
+}
+
+static int updateProgramLine(Line *line, const char *code, size_t codeLen) {
+    char *newCode;
+    char **newStatements;
+    BasicTokenType *newTypes;
+    int newCount;
+    int index;
+
+    newCode = malloc(codeLen + 1);
+    if (!newCode) return 0;
+    memcpy(newCode, code, codeLen + 1);
+
+    newStatements = splitByColon(newCode, &newCount);
+    if (!newStatements) {
+        free(newCode);
+        return 0;
+    }
+
+    newTypes = malloc(sizeof(BasicTokenType) * newCount);
+    if (!newTypes) {
+        freeSplitArray(newStatements, newCount);
+        free(newCode);
+        return 0;
+    }
+
+    for (index = 0; index < newCount; index++) {
+        char *stmt;
+        Token *tokens;
+
+        stmt = newStatements[index];
+        while (*stmt && isspace(*stmt)) stmt++;
+        tokens = tokenize(stmt);
+        if (!tokens) {
+            free(newTypes);
+            freeSplitArray(newStatements, newCount);
+            free(newCode);
+            return 0;
+        }
+        newTypes[index] = tokens[0].type;
+        freeTokens(tokens);
+    }
+
+    if (line->code) {
+        free(line->code);
+    }
+    freeLineCache(line);
+
+    line->code = newCode;
+    line->statements = newStatements;
+    line->statementCount = newCount;
+    line->statementTypes = newTypes;
+    return 1;
+}
+
+static unsigned int hashLineNumber(int lineNum) {
+    return ((unsigned int)lineNum) % BASIC80_LINE_BUCKETS;
+}
+
+static void linkProgramLine(Interpreter *interp, Line *line) {
+    unsigned int bucket;
+
+    bucket = hashLineNumber(line->lineNum);
+    line->hashNext = interp->lineBuckets[bucket];
+    interp->lineBuckets[bucket] = line;
+}
+
+static void unlinkProgramLine(Interpreter *interp, Line *line) {
+    Line **slot;
+
+    slot = &interp->lineBuckets[hashLineNumber(line->lineNum)];
+    while (*slot) {
+        if (*slot == line) {
+            *slot = line->hashNext;
+            line->hashNext = NULL;
+            return;
+        }
+        slot = &((*slot)->hashNext);
+    }
+}
+
+static Line* createProgramLine(int lineNum, const char *code, size_t codeLen) {
+    Line *newLine;
+
+    newLine = malloc(sizeof(Line));
+    if (!newLine) return NULL;
+
+    newLine->lineNum = lineNum;
+    newLine->code = NULL;
+    newLine->statements = NULL;
+    newLine->statementCount = 0;
+    newLine->statementTypes = NULL;
+    newLine->next = NULL;
+    newLine->hashNext = NULL;
+    if (!updateProgramLine(newLine, code, codeLen)) {
+        free(newLine);
+        return NULL;
+    }
+    return newLine;
+}
+
 /* ===== INTERPRETER ===== */
 
 Interpreter* createInterpreter(void) {
     Interpreter *interp = malloc(sizeof(Interpreter));
+    int lineBucket;
+    int bucket;
     if (!interp) {
         fprintf(stderr, "Error: Memory allocation failed for interpreter\n");
         return NULL;
     }
     interp->program = NULL;
+    for (lineBucket = 0; lineBucket < BASIC80_LINE_BUCKETS; lineBucket++) {
+        interp->lineBuckets[lineBucket] = NULL;
+    }
     interp->variables = NULL;
+    for (bucket = 0; bucket < BASIC80_VAR_BUCKETS; bucket++) {
+        interp->variableBuckets[bucket] = NULL;
+    }
     interp->currentLine = NULL;
     interp->forStack = NULL;
     interp->callStack = NULL;
@@ -105,6 +227,7 @@ void freeInterpreter(Interpreter *interp) {
     line = interp->program;
     while (line) {
         next = line->next;
+        freeLineCache(line);
         free(line->code);
         free(line);
         line = next;
@@ -119,6 +242,9 @@ void freeInterpreter(Interpreter *interp) {
         }
         if (var->isArray && var->dimensions) {
             free(var->dimensions);
+        }
+        if (var->isArray && var->strides) {
+            free(var->strides);
         }
         if (var->isString && var->strValue) {
             free(var->strValue);
@@ -191,31 +317,23 @@ void freeInterpreter(Interpreter *interp) {
 void addLine(Interpreter *interp, int lineNum, const char *code) {
     Line *current;
     Line *newLine;
-    char *newCode;
     size_t codeLen;
 
     codeLen = strlen(code);
 
     /* Case 1: list is empty or new line goes before the first */
     if (!interp->program || interp->program->lineNum > lineNum) {
-        newLine = malloc(sizeof(Line));
+        newLine = createProgramLine(lineNum, code, codeLen);
         if (!newLine) return;
-        newLine->code = malloc(codeLen + 1);
-        if (!newLine->code) { free(newLine); return; }
-        memcpy(newLine->code, code, codeLen + 1);
-        newLine->lineNum = lineNum;
         newLine->next = interp->program;
         interp->program = newLine;
+        linkProgramLine(interp, newLine);
         return;
     }
 
     /* Case 2: first line matches — replace in-place, no new node needed */
     if (interp->program->lineNum == lineNum) {
-        newCode = malloc(codeLen + 1);
-        if (!newCode) return;
-        free(interp->program->code);
-        memcpy(newCode, code, codeLen + 1);
-        interp->program->code = newCode;
+        if (!updateProgramLine(interp->program, code, codeLen)) return;
         return;
     }
 
@@ -227,21 +345,14 @@ void addLine(Interpreter *interp, int lineNum, const char *code) {
 
     if (current->next && current->next->lineNum == lineNum) {
         /* Replace existing line in-place, no new node needed */
-        newCode = malloc(codeLen + 1);
-        if (!newCode) return;
-        free(current->next->code);
-        memcpy(newCode, code, codeLen + 1);
-        current->next->code = newCode;
+        if (!updateProgramLine(current->next, code, codeLen)) return;
     } else {
         /* Insert a new node at the correct sorted position */
-        newLine = malloc(sizeof(Line));
+        newLine = createProgramLine(lineNum, code, codeLen);
         if (!newLine) return;
-        newLine->code = malloc(codeLen + 1);
-        if (!newLine->code) { free(newLine); return; }
-        memcpy(newLine->code, code, codeLen + 1);
-        newLine->lineNum = lineNum;
         newLine->next = current->next;
         current->next = newLine;
+        linkProgramLine(interp, newLine);
     }
 }
 
@@ -258,6 +369,8 @@ void deleteLine(Interpreter *interp, int lineNum) {
     if (interp->program->lineNum == lineNum) {
         toDelete = interp->program;
         interp->program = interp->program->next;
+        unlinkProgramLine(interp, toDelete);
+        freeLineCache(toDelete);
         free(toDelete->code);
         free(toDelete);
         return;
@@ -273,23 +386,18 @@ void deleteLine(Interpreter *interp, int lineNum) {
     if (current->next && current->next->lineNum == lineNum) {
         toDelete = current->next;
         current->next = toDelete->next;
+        unlinkProgramLine(interp, toDelete);
+        freeLineCache(toDelete);
         free(toDelete->code);
         free(toDelete);
     }
 }
 
-/* Execute a single statement (no ':' separator processing) */
-static void executeSingleStatement(Interpreter *interp, const char *stmt) {
-    Token *tokens;
-    
-    tokens = tokenize(stmt);
-    
+static void executeTokenizedStatement(Interpreter *interp, Token *tokens) {
     if (tokens[0].type == TOK_EOF || tokens[0].type == TOK_REM) {
-        /* Empty statement or comment: nothing to do */
-        freeTokens(tokens);
         return;
     }
-    
+
     if (tokens[0].type == TOK_PRINT) {
         handlePrint(interp, tokens);
     }
@@ -306,7 +414,6 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
         handleRead(interp, tokens);
     }
     else if (tokens[0].type == TOK_DATA) {
-        /* DATA cannot be executed in direct mode; only valid inside a running program */
         printf("Error: DATA can only be used inside a program.\n");
     }
     else if (tokens[0].type == TOK_RESTORE) {
@@ -319,15 +426,12 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
         handleCls(interp, tokens);
     }
     else if (tokens[0].type == TOK_FOR) {
-        /* FOR loops are only valid inside a running program */
         printf("Error: FOR can only be used inside a program.\n");
     }
     else if (tokens[0].type == TOK_NEXT) {
-        /* NEXT is only valid inside a running program */
         printf("Error: NEXT can only be used inside a program.\n");
     }
     else if (tokens[0].type == TOK_IDENTIFIER) {
-        /* Implicit assignment without LET: e.g. V = 5 or V(1) = 5 */
         handleLet(interp, tokens);
     }
     else if (tokens[0].type == TOK_IF || tokens[0].type == TOK_GOTO || 
@@ -336,16 +440,23 @@ static void executeSingleStatement(Interpreter *interp, const char *stmt) {
         printf("Error: %s can only be used inside a program.\n", tokens[0].value);
     }
     else {
-        /* Vérifier si c'est une commande personnalisée */
         CustomCommandHandler customCmd = findCustomCommand(interp, tokens[0].value);
         if (customCmd) {
             customCmd(interp, tokens);
         } else {
-            /* Unknown command */
             printf("Error: Unknown command '%s'.\n", 
                    tokens[0].value ? tokens[0].value : "");
         }
     }
+}
+
+/* Execute a single statement (no ':' separator processing) */
+static void executeSingleStatement(Interpreter *interp, const char *stmt) {
+    Token *tokens;
+    
+    tokens = tokenize(stmt);
+    if (!tokens) return;
+    executeTokenizedStatement(interp, tokens);
     
     freeTokens(tokens);
 }
@@ -554,7 +665,7 @@ static int executeStatementInProgram(Interpreter *interp, const char *stmt, Line
         }
     }
     else {
-        executeSingleStatement(interp, stmt);
+        executeTokenizedStatement(interp, tokens);
     }
     
     freeTokens(tokens);
@@ -563,8 +674,6 @@ static int executeStatementInProgram(Interpreter *interp, const char *stmt, Line
 
 void runProgram(Interpreter *interp) {
     Line *line;
-    char **parts;
-    int count;
     int i;
     int result;
     Token *tokens;
@@ -574,30 +683,24 @@ void runProgram(Interpreter *interp) {
     /* First pass: collect all DATA items before any execution */
     line = interp->program;
     while (line) {
-        /* Optimisation : ignorer les lignes sans le mot-clé DATA */
-        if (!strstr(line->code, "DATA")) {
-            line = line->next;
-            continue;
-        }
-        
-        /* Diviser la ligne par ':' en ignorant ceux dans REM */
-        parts = splitByColon(line->code, &count);
-        
-        for (i = 0; i < count; i++) {
+        char *stmt;
+
+        for (i = 0; i < line->statementCount; i++) {
+            if (line->statementTypes[i] != TOK_DATA) {
+                continue;
+            }
             /* Ignorer les espaces au début */
-            char *stmt = parts[i];
+            stmt = line->statements[i];
             while (*stmt && isspace(*stmt)) stmt++;
             
             if (*stmt) {
                 tokens = tokenize(stmt);
-                if (tokens[0].type == TOK_DATA) {
+                if (tokens && tokens[0].type == TOK_DATA) {
                     handleData(interp, tokens, line->lineNum);
                 }
-                freeTokens(tokens);
+                if (tokens) freeTokens(tokens);
             }
         }
-        
-        freeSplitArray(parts, count);
         line = line->next;
     }
     
@@ -605,26 +708,22 @@ void runProgram(Interpreter *interp) {
     line = interp->program;
     while (line) {
         interp->currentLine = line;
-        
-        /* Split each source line by ':' to handle multiple statements per line */
-        parts = splitByColon(line->code, &count);
-        
-        for (i = 0; i < count && !interp->hasError; i++) {
+        for (i = 0; i < line->statementCount && !interp->hasError; i++) {
+            char *stmt;
+
             /* Skip leading whitespace */
-            char *stmt = parts[i];
+            stmt = line->statements[i];
             while (*stmt && isspace(*stmt)) stmt++;
             
             if (*stmt) {
                 result = executeStatementInProgram(interp, stmt, &line);
                 if (result == -1) {
                     /* END statement encountered: stop execution */
-                    freeSplitArray(parts, count);
                     interp->currentLine = NULL;
                     return;
                 }
                 if (result == 1) {
                     /* Control flow changed (GOTO, IF, FOR, etc.): restart at new line */
-                    freeSplitArray(parts, count);
                     if (interp->hasError) {
                         interp->currentLine = NULL;
                         return;
@@ -633,8 +732,6 @@ void runProgram(Interpreter *interp) {
                 }
             }
         }
-        
-        freeSplitArray(parts, count);
         if (interp->hasError) break;
         line = line->next;
         
@@ -656,15 +753,20 @@ void listProgram(Interpreter *interp) {
 void clearProgram(Interpreter *interp) {
     Line *line = interp->program;
     Line *next;
+    int bucket;
     
     while (line) {
         next = line->next;
+        freeLineCache(line);
         free(line->code);
         free(line);
         line = next;
     }
     
     interp->program = NULL;
+    for (bucket = 0; bucket < BASIC80_LINE_BUCKETS; bucket++) {
+        interp->lineBuckets[bucket] = NULL;
+    }
 }
 
 /* Save the current program to a text file (one numbered line per row) */

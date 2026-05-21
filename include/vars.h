@@ -7,6 +7,8 @@
 #ifndef VARIABLES_H
 #define VARIABLES_H
 
+#define BASIC80_VAR_BUCKETS 257
+
 /* Structure used to store any BASIC variable (scalar or array) */
 typedef struct Variable {
     char *name;
@@ -18,7 +20,9 @@ typedef struct Variable {
     int arraySize;       /* Total element count (product of all dimension sizes) */
     int numDimensions;   /* Number of dimensions (1, 2, 3, ...) */
     int *dimensions;     /* Size of each individual dimension */
+    int *strides;        /* Precomputed row-major strides for each dimension */
     struct Variable *next;
+    struct Variable *hashNext;
 } Variable;
 
 /* Forward declaration for Interpreter (defined in interpreter.h) */

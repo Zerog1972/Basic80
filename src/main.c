@@ -14,6 +14,7 @@
  */
 #include "interp.h"
 #include <ctype.h>
+#include <time.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -210,7 +211,22 @@ int main(void) {
         
         /* RUN command: execute the loaded program */
         if (strcmp(line, "RUN") == 0) {
+            clock_t startTime;
+            clock_t endTime;
+            double elapsedSeconds;
+
+            startTime = clock();
             runProgram(interp);
+            endTime = clock();
+
+            if (startTime != (clock_t)-1 && endTime != (clock_t)-1) {
+                elapsedSeconds = (double)(endTime - startTime) / CLOCKS_PER_SEC;
+                if (elapsedSeconds >= 60.0) {
+                    printf("Program executed in %.2f minutes.\n", elapsedSeconds / 60.0);
+                } else {
+                    printf("Program executed in %.3f seconds.\n", elapsedSeconds);
+                }
+            }
             continue;
         }
         

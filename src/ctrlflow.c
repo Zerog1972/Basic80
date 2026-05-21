@@ -19,11 +19,14 @@
 
 /* Find a program line by its line number; returns NULL if not found */
 Line* findLineByNumber(Interpreter *interp, int lineNum) {
-    Line *line = interp->program;
-    while (line && line->lineNum != lineNum) {
-        line = line->next;
+    Line *line = interp->lineBuckets[((unsigned int)lineNum) % BASIC80_LINE_BUCKETS];
+    while (line) {
+        if (line->lineNum == lineNum) {
+            return line;
+        }
+        line = line->hashNext;
     }
-    return line;
+    return NULL;
 }
 
 /* Helper: reconstruct a BASIC statement string from a range of tokens.
@@ -208,7 +211,6 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
     double startVal, endVal, stepVal;
     ForLoop *forLoop;
     Line *searchLine;
-    Token *searchTokens;
     int nestLevel;
     
     pos = 1;
@@ -236,13 +238,13 @@ int handleFor(Interpreter *interp, Token *tokens, Line **currentLine) {
                     searchLine = (*currentLine)->next;
                     
                     while (searchLine && nestLevel > 0) {
-                        searchTokens = tokenize(searchLine->code);
-                        if (searchTokens[0].type == TOK_FOR) {
+                        if (searchLine->statementCount > 0 &&
+                            searchLine->statementTypes[0] == TOK_FOR) {
                             nestLevel++;
-                        } else if (searchTokens[0].type == TOK_NEXT) {
+                        } else if (searchLine->statementCount > 0 &&
+                                   searchLine->statementTypes[0] == TOK_NEXT) {
                             nestLevel--;
                         }
-                        freeTokens(searchTokens);
                         
                         if (nestLevel > 0) {
                             searchLine = searchLine->next;

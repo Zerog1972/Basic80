@@ -18,6 +18,8 @@
 #include "vars.h"
 #include "expr.h"
 
+#define BASIC80_LINE_BUCKETS 257
+
 /* Error categories */
 typedef enum {
     ERR_NONE,
@@ -35,7 +37,11 @@ typedef enum {
 typedef struct Line {
     int lineNum;
     char *code;
+    char **statements;
+    int statementCount;
+    BasicTokenType *statementTypes;
     struct Line *next;
+    struct Line *hashNext;
 } Line;
 
 /* Active FOR loop entry on the loop stack */
@@ -95,7 +101,9 @@ typedef struct CustomCommand {
 /* Central interpreter state */
 struct Interpreter {
     Line *program;
+    Line *lineBuckets[BASIC80_LINE_BUCKETS];
     Variable *variables;
+    Variable *variableBuckets[BASIC80_VAR_BUCKETS];
     Line *currentLine;
     ForLoop *forStack;
     CallStack *callStack;
