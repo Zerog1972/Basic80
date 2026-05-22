@@ -176,7 +176,7 @@ The unit tests include:
   - RESTORE with a line number
   - "Out of DATA" error detection
 
-Total: **196 unit tests**
+Total: **279 unit tests**
 
 The code strictly conforms to the **C89/ANSI C** standard.
 
@@ -185,7 +185,7 @@ The code strictly conforms to the **C89/ANSI C** standard.
 ./basic80.exe
 ```
 
-When you type `RUN`, the interpreter now displays the program execution time after it finishes. Short runs are shown in seconds, and longer runs are shown in minutes.
+When you type `RUN`, the interpreter now displays the program execution time after it finishes, formatted in minutes and seconds.
 
 ### Interactive mode
 
