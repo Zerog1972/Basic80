@@ -227,7 +227,7 @@ void test_lexer_erreurs(void) {
 void test_lexer_nouveaux_mots_cles(void) {
     Token *tokens;
     
-    printf("\n=== Tests du lexer - Nouveaux mots-cles SAVE/LOAD ===\n");
+    printf("\n=== Tests du lexer - Nouveaux mots-cles SAVE/LOAD/AND/OR/NOT ===\n");
     
     tokens = tokenize("SAVE");
     ASSERT(tokens != NULL, "SAVE tokenize");
@@ -240,6 +240,27 @@ void test_lexer_nouveaux_mots_cles(void) {
     ASSERT(tokens != NULL, "LOAD tokenize");
     if (tokens) {
         ASSERT(tokens[0].type == TOK_LOAD, "Mot-cle LOAD");
+        freeTokens(tokens);
+    }
+
+    tokens = tokenize("AND");
+    ASSERT(tokens != NULL, "AND tokenize");
+    if (tokens) {
+        ASSERT(tokens[0].type == TOK_AND, "Mot-cle AND");
+        freeTokens(tokens);
+    }
+
+    tokens = tokenize("OR");
+    ASSERT(tokens != NULL, "OR tokenize");
+    if (tokens) {
+        ASSERT(tokens[0].type == TOK_OR, "Mot-cle OR");
+        freeTokens(tokens);
+    }
+
+    tokens = tokenize("NOT");
+    ASSERT(tokens != NULL, "NOT tokenize");
+    if (tokens) {
+        ASSERT(tokens[0].type == TOK_NOT, "Mot-cle NOT");
         freeTokens(tokens);
     }
 }
@@ -265,6 +286,85 @@ void test_lexer_expression_complete(void) {
     ASSERT(tokens[2].type == TOK_COMMA, "COMMA dans expression");
     ASSERT(tokens[3].type == TOK_IDENTIFIER, "IDENTIFIER dans expression");
     freeTokens(tokens);
+
+    tokens = tokenize("INPUT A, B$, C");
+    ASSERT(tokens[0].type == TOK_INPUT, "INPUT dans expression complete");
+    ASSERT(tokens[1].type == TOK_IDENTIFIER, "Variable A apres INPUT");
+    ASSERT(tokens[2].type == TOK_COMMA, "COMMA apres A");
+    ASSERT(tokens[3].type == TOK_IDENTIFIER, "Variable B$ apres COMMA");
+    ASSERT(tokens[4].type == TOK_COMMA, "COMMA apres B$");
+    ASSERT(tokens[5].type == TOK_IDENTIFIER, "Variable C apres second COMMA");
+    ASSERT(tokens[6].type == TOK_EOF, "EOF apres liste INPUT");
+    freeTokens(tokens);
+}
+
+void test_interpreteur_input_multi(void) {
+    Interpreter *interp;
+    FILE *f;
+
+    printf("\n=== Tests de l'interpreteur - INPUT multi-variables ===\n");
+
+    f = fopen("tests_input_multi.tmp", "w");
+    if (!f) {
+        ASSERT(0, "Creation fichier temporaire INPUT");
+        return;
+    }
+    fputs("12.5\nHELLO\n7\n", f);
+    fclose(f);
+
+    if (!freopen("tests_input_multi.tmp", "r", stdin)) {
+        ASSERT(0, "Redirection stdin pour INPUT multi");
+        remove("tests_input_multi.tmp");
+        return;
+    }
+
+    interp = createInterpreter();
+    executeCommand(interp, "INPUT A, B$, C");
+
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "A"), 12.5, "INPUT A lit la valeur numerique");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "B$"), "HELLO", "INPUT B$ lit la chaine");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), 7.0, "INPUT C lit la deuxieme valeur numerique");
+
+    freeInterpreter(interp);
+    remove("tests_input_multi.tmp");
+}
+
+void test_interpreteur_input_multi_programme(void) {
+    Interpreter *interp;
+    FILE *f;
+
+    printf("\n=== Tests de l'interpreteur - INPUT multi dans RUN ===\n");
+
+    f = fopen("tests_input_multi_run.tmp", "w");
+    if (!f) {
+        ASSERT(0, "Creation fichier temporaire INPUT RUN");
+        return;
+    }
+    fputs("12.5\nHELLO\n7\n", f);
+    fclose(f);
+
+    if (!freopen("tests_input_multi_run.tmp", "r", stdin)) {
+        ASSERT(0, "Redirection stdin pour INPUT RUN");
+        remove("tests_input_multi_run.tmp");
+        return;
+    }
+
+    interp = createInterpreter();
+    addLine(interp, 10, "INPUT A, B$, C");
+    addLine(interp, 20, "LET D = A + C");
+    addLine(interp, 30, "LET E = LEN(B$)");
+    addLine(interp, 40, "END");
+
+    runProgram(interp);
+
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "A"), 12.5, "RUN INPUT A lit la valeur numerique");
+    ASSERT_STRING_EQUAL(getStringVariable(interp, "B$"), "HELLO", "RUN INPUT B$ lit la chaine");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), 7.0, "RUN INPUT C lit la deuxieme valeur numerique");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "D"), 19.5, "RUN LET D = A + C apres INPUT multi");
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "E"), 5.0, "RUN LEN(B$) apres INPUT multi");
+
+    freeInterpreter(interp);
+    remove("tests_input_multi_run.tmp");
 }
 
 /* Tests de l'interpreteur */
@@ -600,6 +700,50 @@ void test_interpreteur_if_else_goto(void) {
     
     ASSERT_DOUBLE_EQUAL(getVariable(interp, "X"), 200.0, "Condition fausse: ELSE GOTO execute");
     
+    freeInterpreter(interp);
+}
+
+void test_interpreteur_if_logique(void) {
+    Interpreter *interp;
+
+    printf("\n=== Tests de l'interpreteur - IF logique AND/OR/NOT ===\n");
+
+    interp = createInterpreter();
+    addLine(interp, 10, "LET X = 10");
+    addLine(interp, 20, "LET Y = 3");
+    addLine(interp, 30, "LET A = 0");
+    addLine(interp, 40, "IF X > 5 AND Y < 5 THEN LET A = 1");
+    addLine(interp, 50, "END");
+    runProgram(interp);
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "A"), 1.0, "AND combine deux comparaisons");
+    freeInterpreter(interp);
+
+    interp = createInterpreter();
+    addLine(interp, 10, "LET X = 1");
+    addLine(interp, 20, "LET B = 0");
+    addLine(interp, 30, "IF X = 1 OR X = 2 THEN LET B = 1");
+    addLine(interp, 40, "END");
+    runProgram(interp);
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "B"), 1.0, "OR valide si une condition est vraie");
+    freeInterpreter(interp);
+
+    interp = createInterpreter();
+    addLine(interp, 10, "LET X = 0");
+    addLine(interp, 20, "LET C = 0");
+    addLine(interp, 30, "IF NOT X THEN LET C = 1");
+    addLine(interp, 40, "END");
+    runProgram(interp);
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "C"), 1.0, "NOT inverse une condition numerique");
+    freeInterpreter(interp);
+
+    interp = createInterpreter();
+    addLine(interp, 10, "LET X = 10");
+    addLine(interp, 20, "LET Y = 5");
+    addLine(interp, 30, "LET D = 0");
+    addLine(interp, 40, "IF NOT (X < 5 OR Y = 6) THEN LET D = 1");
+    addLine(interp, 50, "END");
+    runProgram(interp);
+    ASSERT_DOUBLE_EQUAL(getVariable(interp, "D"), 1.0, "Parentheses et priorite logique");
     freeInterpreter(interp);
 }
 
@@ -1828,6 +1972,8 @@ int main(void) {
     test_interpreteur_lignes();
     test_interpreteur_let();
     test_interpreteur_expressions();
+    test_interpreteur_input_multi();
+    test_interpreteur_input_multi_programme();
     test_interpreteur_programme();
     test_interpreteur_goto();
     
@@ -1837,6 +1983,7 @@ int main(void) {
     test_interpreteur_if_operateurs();
     test_interpreteur_if_then_goto();
     test_interpreteur_if_else_goto();
+    test_interpreteur_if_logique();
     
     /* Tests des tableaux DIM */
     test_interpreteur_dim_simple();

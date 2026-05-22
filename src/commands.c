@@ -13,6 +13,7 @@
 #include "expr.h"
 #include "vars.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -230,11 +231,11 @@ void handleDim(Interpreter *interp, Token *tokens) {
 /**
  * Handle the INPUT command.
  *
- * Prompts the user to enter a value and stores it in the specified variable.
- * For string variables (ending with '$') reads a full text line.  For
- * numeric variables reads a floating-point number.
+ * Prompts the user to enter values and stores them in the specified
+ * variables. For string variables (ending with '$') reads a full text line.
+ * For numeric variables reads a floating-point number.
  *
- * Syntax: INPUT variable
+ * Syntax: INPUT variable [, variable ...]
  *
  * @param interp Pointer to the interpreter
  * @param tokens Token array containing the variable name
@@ -242,35 +243,61 @@ void handleDim(Interpreter *interp, Token *tokens) {
 void handleInput(Interpreter *interp, Token *tokens) {
     int pos;
     char varName[MAX_VARNAME_LEN];
-    char buffer[MAX_INPUT_BUFFER];
-    
+
     pos = 1;
     if (tokens[pos].type != TOK_IDENTIFIER) {
         reportErrorEx(interp, ERR_SYNTAX, pos, "Variable name expected after INPUT.");
         return;
     }
-    
-    strncpy(varName, tokens[pos].value, MAX_VARNAME_LEN - 1);
-    varName[MAX_VARNAME_LEN - 1] = '\0';
-    
-    printf("? ");
-    if (isStringVariable(varName)) {
-        if (fgets(buffer, sizeof(buffer), stdin)) {
-            buffer[strcspn(buffer, "\n")] = 0;
-            setStringVariable(interp, varName, buffer);
+
+    while (tokens[pos].type != TOK_EOF) {
+        char buffer[MAX_INPUT_BUFFER];
+
+        if (tokens[pos].type != TOK_IDENTIFIER) {
+            reportErrorEx(interp, ERR_SYNTAX, pos, "Variable name expected in INPUT list.");
+            return;
         }
-    } else {
-        double val;
-        if (scanf("%lf", &val) == 1) {
-            /* Consume the rest of the input line */
-            int c;
-            while ((c = getchar()) != '\n' && c != EOF);
-            setVariable(interp, varName, val);
+
+        strncpy(varName, tokens[pos].value, MAX_VARNAME_LEN - 1);
+        varName[MAX_VARNAME_LEN - 1] = '\0';
+
+        printf("? ");
+        if (!fgets(buffer, sizeof(buffer), stdin)) {
+            reportErrorEx(interp, ERR_RUNTIME, pos, "Failed to read input.");
+            return;
+        }
+        buffer[strcspn(buffer, "\n")] = '\0';
+
+        if (isStringVariable(varName)) {
+            setStringVariable(interp, varName, buffer);
         } else {
-            /* Invalid input: flush the buffer and report an error */
-            int c;
-            while ((c = getchar()) != '\n' && c != EOF);
-            reportErrorEx(interp, ERR_SYNTAX, pos, "Invalid numeric input.");
+            char *end;
+            double val;
+
+            val = strtod(buffer, &end);
+            while (*end && isspace((unsigned char)*end)) {
+                end++;
+            }
+
+            if (end == buffer || *end != '\0') {
+                reportErrorEx(interp, ERR_SYNTAX, pos, "Invalid numeric input.");
+                return;
+            }
+            setVariable(interp, varName, val);
+        }
+
+        pos++;
+        if (tokens[pos].type == TOK_COMMA) {
+            pos++;
+            if (tokens[pos].type == TOK_EOF) {
+                reportErrorEx(interp, ERR_SYNTAX, pos, "Variable name expected after ','.");
+                return;
+            }
+            continue;
+        }
+        if (tokens[pos].type != TOK_EOF) {
+            reportErrorEx(interp, ERR_SYNTAX, pos, "',' expected between INPUT variables.");
+            return;
         }
     }
 }
@@ -511,6 +538,7 @@ void handleHelp(Interpreter *interp, Token *tokens) {
 
         printf("System commands:\n");
         printf("  LIST     - Display the program\n");
+        printf("  EDIT     - Edit one stored line\n");
         printf("  RUN      - Run the program\n");
         printf("  NEW      - Clear the program\n");
         printf("  SAVE     - Save the program\n");
@@ -566,14 +594,15 @@ void handleHelp(Interpreter *interp, Token *tokens) {
         }
         else if (strcmp(cmdName, "INPUT") == 0) {
             printf("=== INPUT ===\n\n");
-            printf("Syntax: INPUT variable\n\n");
+            printf("Syntax: INPUT variable [, variable ...]\n\n");
             printf("Description:\n");
-            printf("  Asks the user to enter a value.\n");
+            printf("  Asks the user to enter one value per variable.\n");
             printf("  For string variables (ending with $), reads text.\n");
             printf("  For numeric variables, reads a number.\n\n");
             printf("Examples:\n");
             printf("  INPUT A        -> Waits for a number\n");
             printf("  INPUT NAME$    -> Waits for text\n\n");
+            printf("  INPUT A, B$, C -> Reads 3 values in sequence\n\n");
         }
         else if (strcmp(cmdName, "DIM") == 0) {
             printf("=== DIM ===\n\n");
@@ -726,6 +755,17 @@ void handleHelp(Interpreter *interp, Token *tokens) {
             printf("  Loads a program from a file.\n\n");
             printf("Example:\n");
             printf("  LOAD \"myprog.bas\"\n\n");
+        }
+        else if (strcmp(cmdName, "EDIT") == 0) {
+            printf("=== EDIT ===\n\n");
+            printf("Syntax: EDIT lineNumber\n\n");
+            printf("Description:\n");
+            printf("  Opens one stored line in a prefilled editable prompt.\n");
+            printf("  You can edit the line directly without retyping it all.\n");
+            printf("  Press Enter unchanged to keep it; erase everything then\n");
+            printf("  press Enter to delete the line.\n\n");
+            printf("Example:\n");
+            printf("  EDIT 120\n\n");
         }
         else if (strcmp(cmdName, "HELP") == 0) {
             printf("=== HELP ===\n\n");

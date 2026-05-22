@@ -20,7 +20,7 @@ The language enforces strict typing based on variable names:
 - **PRINT** - Display text and variables
 - **LET** - Assign a value to a variable
 - **DIM** - Declare an array
-- **INPUT** - Read a numeric value or a string (for `VAR$` variables) from the user
+- **INPUT** - Read one or multiple numeric/string values from the user (`INPUT A` or `INPUT A, B$, C`)
 - **GOTO** - Jump to a numbered line
 - **GOSUB** - Call a subroutine
 - **RETURN** - Return from a subroutine
@@ -93,6 +93,11 @@ The `+` operator concatenates two strings.
 - `<=` Less than or equal
 - `>=` Greater than or equal
 - `<>` Not equal
+
+### Logical operators (in IF conditions):
+- `AND` Logical AND
+- `OR` Logical OR
+- `NOT` Logical NOT
 
 ## Usage
 
@@ -672,14 +677,10 @@ See `include/interp.h` and `extens/extens.c` for a full working example.
 
 - Filenames for `SAVE`/`LOAD` must conform to the DOS 8.3 format (max 8-character name, 3-character extension, no spaces)
 - Only numeric arrays; string arrays (`DIM A$(10)`) are not supported
-- No logical operators (`AND`, `OR`, `NOT`) in conditions
 - No user-defined functions (`DEF FN`)
-- `INPUT` accepts only one variable per statement
 - Angles for trigonometric functions are in radians (use `RAD()`/`DEG()` for conversion)
 
 ## Possible extensions
 
-- Logical operators (`AND`, `OR`, `NOT`) in `IF` conditions
 - String arrays
 - User-defined functions (`DEF FN`)
-- `INPUT` with multiple comma-separated variables

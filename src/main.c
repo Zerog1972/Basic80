@@ -8,6 +8,7 @@
  *   LIST  - display all program lines
  *   RUN   - execute the loaded program
  *   NEW   - erase the program and reset the interpreter
+ *   EDIT n - edit a stored line by replacing part of its text
  *   SAVE "file" - save the program to a text file
  *   LOAD "file" - load a program from a text file
  *   EXIT  - quit the interpreter
@@ -157,6 +158,132 @@ static void handleFileCommand(Interpreter *interp, const char *line, int isSave)
     }
 }
 
+/* Find a stored line by number in the sorted program list. */
+static Line* findStoredLine(Interpreter *interp, int lineNum) {
+    Line *line;
+
+    line = interp->program;
+    while (line && line->lineNum < lineNum) {
+        line = line->next;
+    }
+    if (line && line->lineNum == lineNum) {
+        return line;
+    }
+    return NULL;
+}
+
+/* Queue prefilled text into the Windows console input buffer so the user
+ * can edit an existing line directly at the prompt. */
+#ifdef _WIN32
+static int queueConsolePrefill(const char *text) {
+    HANDLE hIn;
+    DWORD mode;
+    size_t len;
+    INPUT_RECORD *records;
+    DWORD written;
+    size_t i;
+
+    hIn = GetStdHandle(STD_INPUT_HANDLE);
+    if (hIn == INVALID_HANDLE_VALUE) return 0;
+    if (!GetConsoleMode(hIn, &mode)) return 0;
+
+    len = strlen(text);
+    if (len == 0) return 1;
+
+    records = (INPUT_RECORD*)malloc(sizeof(INPUT_RECORD) * (len * 2));
+    if (!records) return 0;
+
+    for (i = 0; i < len; i++) {
+        memset(&records[i * 2], 0, sizeof(INPUT_RECORD));
+        records[i * 2].EventType = KEY_EVENT;
+        records[i * 2].Event.KeyEvent.bKeyDown = TRUE;
+        records[i * 2].Event.KeyEvent.wRepeatCount = 1;
+        records[i * 2].Event.KeyEvent.uChar.AsciiChar = text[i];
+
+        memset(&records[i * 2 + 1], 0, sizeof(INPUT_RECORD));
+        records[i * 2 + 1].EventType = KEY_EVENT;
+        records[i * 2 + 1].Event.KeyEvent.bKeyDown = FALSE;
+        records[i * 2 + 1].Event.KeyEvent.wRepeatCount = 1;
+        records[i * 2 + 1].Event.KeyEvent.uChar.AsciiChar = text[i];
+    }
+
+    written = 0;
+    if (!WriteConsoleInput(hIn, records, (DWORD)(len * 2), &written)) {
+        free(records);
+        return 0;
+    }
+
+    free(records);
+    return written == (DWORD)(len * 2);
+}
+#endif
+
+/* EDIT <lineNumber>: open a directly editable prefilled line so the user
+ * can modify it without retyping it entirely. */
+static void handleEditCommand(Interpreter *interp, const char *line) {
+    const char *p;
+    char *endPtr;
+    long parsed;
+    int lineNum;
+    Line *target;
+    char editedCode[1024];
+
+    p = line + 4;
+    while (*p && isspace((unsigned char)*p)) p++;
+
+    if (*p == '\0') {
+        printf("Usage: EDIT <lineNumber>\n");
+        return;
+    }
+
+    parsed = strtol(p, &endPtr, 10);
+    if (endPtr == p || parsed <= 0 || parsed > 32767) {
+        printf("Error: Invalid line number.\n");
+        return;
+    }
+    while (*endPtr && isspace((unsigned char)*endPtr)) endPtr++;
+    if (*endPtr != '\0') {
+        printf("Usage: EDIT <lineNumber>\n");
+        return;
+    }
+
+    lineNum = (int)parsed;
+    target = findStoredLine(interp, lineNum);
+    if (!target) {
+        printf("Error: Line %d not found.\n", lineNum);
+        return;
+    }
+
+    printf("Edit line %d (Enter to keep, empty after erase to delete):\n", lineNum);
+    printf("%d ", lineNum);
+    fflush(stdout);
+
+#ifdef _WIN32
+    (void)queueConsolePrefill(target->code);
+#endif
+
+    if (!fgets(editedCode, sizeof(editedCode), stdin)) {
+        clearerr(stdin);
+        printf("EDIT canceled.\n");
+        return;
+    }
+    editedCode[strcspn(editedCode, "\n")] = '\0';
+
+    if (strcmp(editedCode, target->code) == 0) {
+        printf("Line unchanged.\n");
+        return;
+    }
+
+    if (editedCode[0] == '\0') {
+        deleteLine(interp, lineNum);
+        printf("Line %d deleted.\n", lineNum);
+        return;
+    }
+
+    addLine(interp, lineNum, editedCode);
+    printf("Line updated: %d %s\n", lineNum, editedCode);
+}
+
 int main(void) {
     Interpreter *interp;
     char line[1024];
@@ -247,6 +374,12 @@ int main(void) {
         /* LOAD command: load a program from a file */
         if (strncmp(line, "LOAD", 4) == 0 && (line[4] == ' ' || line[4] == '"')) {
             handleFileCommand(interp, line, 0);
+            continue;
+        }
+
+        /* EDIT command: interactively edit an existing line */
+        if (strncmp(line, "EDIT", 4) == 0 && (line[4] == '\0' || isspace((unsigned char)line[4]))) {
+            handleEditCommand(interp, line);
             continue;
         }
         

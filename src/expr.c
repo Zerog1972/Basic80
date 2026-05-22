@@ -26,20 +26,31 @@ static int isStringVariable(const char *name) {
     return len > 0 && name[len - 1] == '$';
 }
 
-/* Evaluate a boolean condition expression (used by the IF statement) */
-int evaluateCondition(Interpreter *interp, Token *tokens, int *pos) {
-    double left, right;
+/* Parse an atomic condition: parenthesized condition or numeric comparison. */
+static int evaluateConditionPrimary(Interpreter *interp, Token *tokens, int *pos) {
+    double left;
+    double right;
     BasicTokenType op;
-    
+
+    if (tokens[*pos].type == TOK_LPAREN) {
+        int result;
+        (*pos)++;
+        result = evaluateCondition(interp, tokens, pos);
+        if (tokens[*pos].type == TOK_RPAREN) {
+            (*pos)++;
+        }
+        return result;
+    }
+
     left = evaluateExpression(interp, tokens, pos);
-    
+
     if (tokens[*pos].type == TOK_LT || tokens[*pos].type == TOK_GT ||
         tokens[*pos].type == TOK_LE || tokens[*pos].type == TOK_GE ||
         tokens[*pos].type == TOK_EQUALS || tokens[*pos].type == TOK_NE) {
         op = tokens[*pos].type;
         (*pos)++;
         right = evaluateExpression(interp, tokens, pos);
-        
+
         switch (op) {
             case TOK_LT: return left < right;
             case TOK_GT: return left > right;
@@ -50,9 +61,46 @@ int evaluateCondition(Interpreter *interp, Token *tokens, int *pos) {
             default: return 0;
         }
     }
-    
-    /* No relational operator found: treat as true if non-zero */
-    return left != 0;
+
+    return left != 0.0;
+}
+
+/* Parse NOT with highest precedence among logical operators. */
+static int evaluateConditionNot(Interpreter *interp, Token *tokens, int *pos) {
+    if (tokens[*pos].type == TOK_NOT) {
+        (*pos)++;
+        return !evaluateConditionNot(interp, tokens, pos);
+    }
+    return evaluateConditionPrimary(interp, tokens, pos);
+}
+
+/* Parse AND expressions. */
+static int evaluateConditionAnd(Interpreter *interp, Token *tokens, int *pos) {
+    int result;
+
+    result = evaluateConditionNot(interp, tokens, pos);
+    while (tokens[*pos].type == TOK_AND) {
+        int right;
+        (*pos)++;
+        right = evaluateConditionNot(interp, tokens, pos);
+        result = result && right;
+    }
+    return result;
+}
+
+/* Evaluate a boolean condition expression (used by the IF statement) */
+int evaluateCondition(Interpreter *interp, Token *tokens, int *pos) {
+    int result;
+
+    result = evaluateConditionAnd(interp, tokens, pos);
+    while (tokens[*pos].type == TOK_OR) {
+        int right;
+        (*pos)++;
+        right = evaluateConditionAnd(interp, tokens, pos);
+        result = result || right;
+    }
+
+    return result;
 }
 
 /* Evaluate a factor: number literal, variable, array access, or built-in function */

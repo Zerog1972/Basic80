@@ -21,6 +21,7 @@ static int isKeyword(const char *word, BasicTokenType *type) {
         case 'A':
             if (strcmp(word, "ABS")   == 0) { *type = TOK_ABS;  return 1; }
             if (strcmp(word, "ACOS")  == 0) { *type = TOK_ACOS; return 1; }
+            if (strcmp(word, "AND")   == 0) { *type = TOK_AND;  return 1; }
             if (strcmp(word, "ASIN")  == 0) { *type = TOK_ASIN; return 1; }
             if (strcmp(word, "ASC")   == 0) { *type = TOK_ASC;  return 1; }
             if (strcmp(word, "ATAN")  == 0) { *type = TOK_ATAN; return 1; }
@@ -73,6 +74,10 @@ static int isKeyword(const char *word, BasicTokenType *type) {
             break;
         case 'N':
             if (strcmp(word, "NEXT")  == 0) { *type = TOK_NEXT; return 1; }
+            if (strcmp(word, "NOT")   == 0) { *type = TOK_NOT;  return 1; }
+            break;
+        case 'O':
+            if (strcmp(word, "OR")    == 0) { *type = TOK_OR; return 1; }
             break;
         case 'P':
             if (strcmp(word, "POW")   == 0) { *type = TOK_POW;   return 1; }

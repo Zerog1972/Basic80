@@ -81,6 +81,9 @@ typedef enum {
     TOK_COMMA,
     TOK_SEMICOLON,
     TOK_COLON,
+    TOK_AND,
+    TOK_OR,
+    TOK_NOT,
     TOK_NEWLINE,
     TOK_EOF
 } BasicTokenType;
