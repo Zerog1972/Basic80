@@ -341,6 +341,8 @@ int main(void) {
             clock_t startTime;
             clock_t endTime;
             double elapsedSeconds;
+            int elapsedMinutes;
+            double remainingSeconds;
 
             startTime = clock();
             runProgram(interp);
@@ -348,11 +350,9 @@ int main(void) {
 
             if (startTime != (clock_t)-1 && endTime != (clock_t)-1) {
                 elapsedSeconds = (double)(endTime - startTime) / CLOCKS_PER_SEC;
-                if (elapsedSeconds >= 60.0) {
-                    printf("Program executed in %.2f minutes.\n", elapsedSeconds / 60.0);
-                } else {
-                    printf("Program executed in %.3f seconds.\n", elapsedSeconds);
-                }
+                elapsedMinutes = (int)(elapsedSeconds / 60.0);
+                remainingSeconds = elapsedSeconds - (elapsedMinutes * 60.0);
+                printf("Program executed in %d min %.3f s.\n", elapsedMinutes, remainingSeconds);
             }
             continue;
         }

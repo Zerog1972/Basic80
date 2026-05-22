@@ -1,4 +1,4 @@
-10 T$ = "Thierry JOUVE"
+10 T$ = "Mathis JOUVE"
 20 L = LEN(T$)
 30 FOR I = 1 TO L
 40 PRINT SPACE$(I-1),MID$(T$,I,1)
