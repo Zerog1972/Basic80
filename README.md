@@ -31,6 +31,7 @@ The language enforces strict typing based on variable names:
 - **RESTORE** - Reset the DATA read pointer (with or without a line number)
 - **REM** - Comments
 - **END** - End the program
+- **CLS** - Clear the screen
 - **HELP** - Display help on available commands
 
 ### Arithmetic operators:
@@ -191,10 +192,12 @@ When you type `RUN`, the interpreter now displays the program execution time aft
 
 **Shell commands:**
 - `LIST` - Display the program in memory
+- `EDIT lineNumber` - Edit one stored program line in place
 - `RUN` - Run the program
 - `NEW` - Clear the program
 - `SAVE "file.bas"` - Save the program to a file
 - `LOAD "file.bas"` - Load a program from a file
+- `CLS` - Clear the screen
 - `HELP` - Display help on commands (use `HELP COMMAND` for more details)
 - `EXIT` - Quit the interpreter
 
